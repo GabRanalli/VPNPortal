@@ -14,6 +14,11 @@
  * Para aparecer, nos apuntamos en org.kde.StatusNotifierWatcher (en GNOME
  * lo ofrece la extensión AppIndicator).
  *
+ * En Wayland una app no puede ponerse delante por su cuenta (sería "robar
+ * el foco"). Antes de cada clic, la extensión nos da un "token de
+ * activación" con ProvideXdgActivationToken: es el permiso para traer la
+ * ventana al frente, y se lo pasamos a GTK al mostrarla.
+ *
  * (Antes usábamos libayatana-appindicator-glib, pero publica el menú en
  * otro formato, org.gtk.Menus, que la extensión de GNOME no entiende.)
  */
@@ -42,6 +47,7 @@ static const char introspection_xml[] =
   "    <method name='SecondaryActivate'><arg type='i' direction='in'/><arg type='i' direction='in'/></method>"
   "    <method name='ContextMenu'><arg type='i' direction='in'/><arg type='i' direction='in'/></method>"
   "    <method name='Scroll'><arg type='i' direction='in'/><arg type='s' direction='in'/></method>"
+  "    <method name='ProvideXdgActivationToken'><arg type='s' direction='in'/></method>"
   "    <signal name='NewIcon'/>"
   "    <signal name='NewTitle'/>"
   "    <signal name='NewToolTip'/>"
@@ -115,6 +121,7 @@ static GArray          *entries;      /* de Entry */
 static guint32          revision;     /* sube cada vez que cambia el menú */
 static char            *icon_name;
 static char            *status_text;
+static char            *activation_token;  /* el último que nos dieron */
 
 static TrayCallbacks    callbacks;
 static gpointer         callbacks_data;
@@ -218,10 +225,12 @@ activate_entry (int id)
   const Entry *entry = &g_array_index (entries, Entry, id - 1);
   EntryKind kind = entry->kind;
   g_autofree char *vpn_id = g_strdup (entry->vpn_id);
+  /* Cada token sirve una sola vez: lo "robamos" para gastarlo ahora. */
+  g_autofree char *token = g_steal_pointer (&activation_token);
 
   switch (kind) {
   case ENTRY_TOGGLE: callbacks.toggle (vpn_id, callbacks_data); break;
-  case ENTRY_SHOW:   callbacks.show (callbacks_data);           break;
+  case ENTRY_SHOW:   callbacks.show (token, callbacks_data);    break;
   case ENTRY_QUIT:   callbacks.quit (callbacks_data);           break;
   default:                                                       break;
   }
@@ -250,7 +259,13 @@ handle_method_call (GDBusConnection       *connection,
     /* Con ItemIsMenu = TRUE el clic normal abre el menú; si aun así nos
      * llaman (p. ej. clic central), mostramos la ventana. */
     g_dbus_method_invocation_return_value (invocation, NULL);
-    callbacks.show (callbacks_data);
+    g_autofree char *token = g_steal_pointer (&activation_token);
+    callbacks.show (token, callbacks_data);
+  } else if (g_str_equal (method_name, "ProvideXdgActivationToken")) {
+    const char *token;
+    g_variant_get (parameters, "(&s)", &token);
+    g_set_str (&activation_token, token);
+    g_dbus_method_invocation_return_value (invocation, NULL);
   } else if (g_str_equal (method_name, "ContextMenu") ||
              g_str_equal (method_name, "Scroll")) {
     g_dbus_method_invocation_return_value (invocation, NULL);
@@ -563,6 +578,7 @@ tray_shutdown (void)
   g_clear_pointer (&app_id, g_free);
   g_clear_pointer (&icon_name, g_free);
   g_clear_pointer (&status_text, g_free);
+  g_clear_pointer (&activation_token, g_free);
 }
 
 /*

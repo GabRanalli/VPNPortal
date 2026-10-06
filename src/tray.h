@@ -21,7 +21,9 @@ typedef struct {
 /* Qué hacer cuando se elige algo en el menú. */
 typedef struct {
   void (*toggle) (const char *id, gpointer user_data);  /* conectar/desconectar */
-  void (*show)   (gpointer user_data);                  /* mostrar la ventana */
+  /* mostrar la ventana; 'activation_token' (o NULL) es el permiso de
+   * GNOME para traerla al frente (ver tray.c) */
+  void (*show)   (const char *activation_token, gpointer user_data);
   void (*quit)   (gpointer user_data);                  /* salir */
 } TrayCallbacks;
 

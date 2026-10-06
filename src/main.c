@@ -745,8 +745,14 @@ on_tray_toggle (const char *id, gpointer user_data)
 }
 
 static void
-on_tray_show (gpointer user_data)
+on_tray_show (const char *activation_token, gpointer user_data)
 {
+  /* El token es el permiso de GNOME para poner la ventana delante (en
+   * Wayland una app no puede hacerlo por su cuenta). GTK lo usa en el
+   * siguiente gtk_window_present. */
+  if (main_window != NULL && activation_token != NULL)
+    gtk_window_set_startup_id (main_window, activation_token);
+
   /* "activate" es lo mismo que abrir la app desde el lanzador: si la
    * ventana existe, on_activate la vuelve a mostrar. */
   g_application_activate (G_APPLICATION (user_data));
