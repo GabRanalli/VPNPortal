@@ -22,6 +22,8 @@ umask 022
 
 GPCLIENT=/usr/bin/gpclient
 ALLOWLIST=/etc/gp-vpn/allowed-hosts
+# Sustituto de gpauth que muestra el login dentro de la app.
+AUTH_BINARY=/usr/local/libexec/gp-vpn-auth
 
 die() {
   echo "gp-vpn-helper: $*" >&2
@@ -88,6 +90,14 @@ cmd_connect() {
 
   # Sin gateway concreta, gpclient preguntaría por teclado: que elija sola.
   [[ -n "$gateway" ]] || args+=("--auto-gateway")
+
+  # Si está instalado, gpclient usará nuestro login (dentro de la app) en
+  # vez de abrir la ventana de gpauth. La ruta es fija y de root: nadie
+  # puede cambiar qué programa se lanza. (gpclient lo ejecuta como tu
+  # usuario, no como root.)
+  if [[ -x "$AUTH_BINARY" ]]; then
+    export GP_AUTH_BINARY="$AUTH_BINARY"
+  fi
 
   # "--opcion=valor" y el "--" antes del portal: así gpclient nunca puede
   # confundir un valor con una opción.

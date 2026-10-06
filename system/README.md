@@ -12,13 +12,21 @@ gpclient necesita root. La app nunca lo lanza directamente: pasa siempre por
 Así, un programa malicioso que corra con tu usuario no puede conectarte a un
 servidor suyo sin conocer tu contraseña.
 
-## Instalar (una vez, y de nuevo si cambia el helper)
+Para el **login dentro de la app**, el helper le dice a gpclient que use
+`/usr/local/libexec/gp-vpn-auth` en vez de su programa de login (`gpauth`).
+`gp-vpn-auth` le pide el login a la app por D-Bus y le devuelve el resultado a
+gpclient. Si no está instalado, gpclient abre la ventana de gpauth como siempre.
+
+## Instalar (una vez, y de nuevo si cambia el helper o gp-vpn-auth)
 
 ```bash
 # 1. El helper, propiedad de root (así nadie más puede modificarlo)
 sudo install -o root -g root -m 0755 system/gp-vpn-helper /usr/local/sbin/gp-vpn-helper
 
-# 2. La regla de sudo: primero se COMPRUEBA la sintaxis, y solo si está bien se instala
+# 2. El sustituto de gpauth (se compila con "meson compile -C build")
+sudo install -o root -g root -m 0755 build/gp-vpn-auth /usr/local/libexec/gp-vpn-auth
+
+# 3. La regla de sudo: primero se COMPRUEBA la sintaxis, y solo si está bien se instala
 sudo visudo -cf system/gp-vpn.sudoers && sudo install -o root -g root -m 0440 system/gp-vpn.sudoers /etc/sudoers.d/gp-vpn
 ```
 
@@ -37,5 +45,5 @@ sudoedit /etc/gp-vpn/allowed-hosts            # quitar alguno
 ## Desinstalar
 
 ```bash
-sudo rm -r /etc/sudoers.d/gp-vpn /usr/local/sbin/gp-vpn-helper /etc/gp-vpn
+sudo rm -r /etc/sudoers.d/gp-vpn /usr/local/sbin/gp-vpn-helper /usr/local/libexec/gp-vpn-auth /etc/gp-vpn
 ```
