@@ -51,18 +51,29 @@ static VpnRow        *pending_switch; /* VPN a conectar en cuanto se
                                        * desconecte la actual */
 
 /* El resumen de "Actividad": los pasos del último intento de conexión. */
+typedef enum {
+  STEP_ICON_NONE,
+  STEP_ICON_DONE,      /* ✓ */
+  STEP_ICON_RUNNING,   /* ruedecita */
+  STEP_ICON_ERROR,     /* ⚠ */
+} StepIcon;
+
 typedef struct {
   VpnStepKind  kind;
   char        *text;
-  char        *time;   /* "12:41:03" */
+  char        *time;       /* "12:41:03" */
+  GtkWidget   *row;        /* su fila en la lista (si la ventana existe) */
+  GtkWidget   *icon;       /* el icono que tiene puesto ahora */
+  StepIcon     icon_kind;
 } Step;
 
-#define MAX_STEPS 10
+#define MAX_STEPS 50
 
 static GPtrArray     *steps;          /* de Step*, el más antiguo primero */
 static Vpn           *steps_vpn;      /* la VPN de esos pasos */
 static GtkWidget     *activity_group;
 static GtkWidget     *activity_list;  /* GtkListBox con un paso por fila */
+static gboolean       activity_follow = TRUE;  /* ¿vista pegada al final? */
 
 static void open_edit_dialog (VpnRow *editing);
 
@@ -103,14 +114,69 @@ step_free (Step *step)
   g_free (step);
 }
 
-/* Rehace la lista de pasos. Son pocos, así que la rehacemos entera. */
+/* Qué icono le toca a un paso: error, "en curso" (solo el último, y
+ * solo mientras la VPN está ocupada) o hecho. */
+static StepIcon
+step_wanted_icon (const Step *step, gboolean last, gboolean busy)
+{
+  if (step->kind == VPN_STEP_ERROR)
+    return STEP_ICON_ERROR;
+  if (last && busy && step->kind != VPN_STEP_DONE)
+    return STEP_ICON_RUNNING;
+  return STEP_ICON_DONE;
+}
+
+/* Cambia el icono de la fila solo si hace falta (cambiarlo siempre
+ * reiniciaría la animación de la ruedecita). */
+static void
+step_update_icon (Step *step, gboolean last, gboolean busy)
+{
+  StepIcon wanted = step_wanted_icon (step, last, busy);
+
+  if (step->row == NULL || wanted == step->icon_kind)
+    return;
+
+  if (step->icon != NULL)
+    adw_action_row_remove (ADW_ACTION_ROW (step->row), step->icon);
+
+  switch (wanted) {
+  case STEP_ICON_ERROR:
+    step->icon = gtk_image_new_from_icon_name ("dialog-error-symbolic");
+    gtk_widget_add_css_class (step->icon, "error");
+    break;
+  case STEP_ICON_RUNNING:
+    step->icon = adw_spinner_new ();
+    break;
+  default:
+    step->icon = gtk_image_new_from_icon_name ("object-select-symbolic");
+    gtk_widget_add_css_class (step->icon, "dim-label");
+    break;
+  }
+  adw_action_row_add_prefix (ADW_ACTION_ROW (step->row), step->icon);
+  step->icon_kind = wanted;
+}
+
+/* Crea la fila de un paso al final de la lista (el icono lo pone
+ * refresh_activity). */
+static void
+step_build_row (Step *step)
+{
+  step->row = adw_action_row_new ();
+  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (step->row), FALSE);
+  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (step->row), step->text);
+  adw_action_row_set_subtitle (ADW_ACTION_ROW (step->row), step->time);
+  step->icon = NULL;
+  step->icon_kind = STEP_ICON_NONE;
+  gtk_list_box_append (GTK_LIST_BOX (activity_list), step->row);
+}
+
+/* Pone al día el título y los iconos. Las filas no se rehacen: si se
+ * rehiciesen, el scroll saltaría cada vez. */
 static void
 refresh_activity (void)
 {
   if (activity_list == NULL)
     return;
-
-  gtk_list_box_remove_all (GTK_LIST_BOX (activity_list));
 
   /* El título de una tarjeta admite "markup" (<b>, &amp;...): el nombre
    * de la VPN hay que escaparlo, o un "&" lo rompería. */
@@ -126,29 +192,8 @@ refresh_activity (void)
   gboolean busy = steps_vpn != NULL &&
                   vpn_get_state (steps_vpn) != VPN_DISCONNECTED;
 
-  for (guint i = 0; i < steps->len; i++) {
-    Step *step = g_ptr_array_index (steps, i);
-    gboolean last = i == steps->len - 1;
-
-    GtkWidget *row = adw_action_row_new ();
-    adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
-    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), step->text);
-    adw_action_row_set_subtitle (ADW_ACTION_ROW (row), step->time);
-
-    /* El icono: error, "en curso" (ruedecita) o hecho (✓). */
-    GtkWidget *icon;
-    if (step->kind == VPN_STEP_ERROR) {
-      icon = gtk_image_new_from_icon_name ("dialog-error-symbolic");
-      gtk_widget_add_css_class (icon, "error");
-    } else if (last && busy && step->kind != VPN_STEP_DONE) {
-      icon = adw_spinner_new ();
-    } else {
-      icon = gtk_image_new_from_icon_name ("object-select-symbolic");
-      gtk_widget_add_css_class (icon, "dim-label");
-    }
-    adw_action_row_add_prefix (ADW_ACTION_ROW (row), icon);
-    gtk_list_box_append (GTK_LIST_BOX (activity_list), row);
-  }
+  for (guint i = 0; i < steps->len; i++)
+    step_update_icon (g_ptr_array_index (steps, i), i == steps->len - 1, busy);
 }
 
 /* Llega un paso nuevo desde vpn.c. */
@@ -160,7 +205,10 @@ on_vpn_step (Vpn *vpn, VpnStepKind kind, const char *text, gpointer user_data)
   /* Un intento nuevo (o de otra VPN): lista limpia. */
   if (kind == VPN_STEP_BEGIN || vpn != steps_vpn) {
     g_ptr_array_set_size (steps, 0);
+    if (activity_list != NULL)
+      gtk_list_box_remove_all (GTK_LIST_BOX (activity_list));
     steps_vpn = vpn;
+    activity_follow = TRUE;
   }
 
   /* gpclient a veces repite un mensaje: no lo contamos dos veces. */
@@ -176,9 +224,15 @@ on_vpn_step (Vpn *vpn, VpnStepKind kind, const char *text, gpointer user_data)
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
   step->time = g_date_time_format (now, "%H:%M:%S");
   g_ptr_array_add (steps, step);
+  if (activity_list != NULL)
+    step_build_row (step);
 
-  if (steps->len > MAX_STEPS)
-    g_ptr_array_remove_index (steps, 0);   /* fuera el más antiguo */
+  if (steps->len > MAX_STEPS) {           /* fuera el más antiguo */
+    Step *oldest = g_ptr_array_index (steps, 0);
+    if (oldest->row != NULL && activity_list != NULL)
+      gtk_list_box_remove (GTK_LIST_BOX (activity_list), oldest->row);
+    g_ptr_array_remove_index (steps, 0);
+  }
 
   refresh_activity ();
 }
@@ -871,6 +925,46 @@ on_show_log_clicked (GtkButton *button, gpointer user_data)
                                 0, FALSE, 0, 0);
 }
 
+/* El usuario (o nosotros) ha movido el scroll: ¿está abajo del todo? */
+static void
+on_activity_scrolled (GtkAdjustment *adjustment, gpointer user_data)
+{
+  (void) user_data;
+  activity_follow = gtk_adjustment_get_value (adjustment) +
+                    gtk_adjustment_get_page_size (adjustment) >=
+                    gtk_adjustment_get_upper (adjustment) - 1;
+}
+
+static guint activity_scroll_id;   /* bajada pendiente (ver abajo) */
+
+static gboolean
+scroll_activity_to_bottom (gpointer user_data)
+{
+  GtkAdjustment *adjustment = user_data;
+
+  activity_scroll_id = 0;
+  gtk_adjustment_set_value (adjustment,
+                            gtk_adjustment_get_upper (adjustment) -
+                            gtk_adjustment_get_page_size (adjustment));
+  return G_SOURCE_REMOVE;
+}
+
+/* Ha cambiado el tamaño del contenido (p. ej. un paso nuevo). Como en una
+ * consola: si estabas abajo del todo, seguimos bajando; si habías subido
+ * a mirar algo, no te movemos.
+ *
+ * OJO: "changed" llega mientras GTK está colocando los widgets; si
+ * movemos el scroll aquí mismo, el contenido ya se colocó con el valor
+ * anterior y se queda desfasado. Por eso lo dejamos para justo después
+ * (g_idle_add = "cuando el bucle de eventos esté libre"). */
+static void
+on_activity_resized (GtkAdjustment *adjustment, gpointer user_data)
+{
+  (void) user_data;
+  if (activity_follow && activity_scroll_id == 0)
+    activity_scroll_id = g_idle_add (scroll_activity_to_bottom, adjustment);
+}
+
 /* La tarjeta "Actividad": los pasos + el botón del registro completo. */
 static GtkWidget *
 build_activity_group (void)
@@ -887,11 +981,10 @@ build_activity_group (void)
   adw_preferences_group_set_header_suffix (ADW_PREFERENCES_GROUP (activity_group),
                                            show_log);
 
-  /* "boxed-list": el estilo de lista con bordes redondeados de GNOME. */
   activity_list = gtk_list_box_new ();
   gtk_list_box_set_selection_mode (GTK_LIST_BOX (activity_list),
                                    GTK_SELECTION_NONE);
-  gtk_widget_add_css_class (activity_list, "boxed-list");
+  gtk_list_box_set_show_separators (GTK_LIST_BOX (activity_list), TRUE);
 
   /* Lo que se ve cuando la lista está vacía. */
   GtkWidget *placeholder = gtk_label_new ("Aún no hay actividad");
@@ -900,8 +993,33 @@ build_activity_group (void)
   gtk_widget_set_margin_bottom (placeholder, 18);
   gtk_list_box_set_placeholder (GTK_LIST_BOX (activity_list), placeholder);
 
-  adw_preferences_group_add (ADW_PREFERENCES_GROUP (activity_group),
-                             activity_list);
+  /* Pasos que hubiera de antes de crear la ventana. */
+  for (guint i = 0; i < steps->len; i++)
+    step_build_row (g_ptr_array_index (steps, i));
+
+  /* La lista va dentro de una zona con scroll de altura fija: la ventana
+   * no crece, y para ver pasos anteriores se sube, como en una consola.
+   * "card" le da el borde redondeado; overflow HIDDEN recorta lo que
+   * asome por las esquinas al hacer scroll. */
+  GtkWidget *scroller = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroller),
+                                  GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_min_content_height (GTK_SCROLLED_WINDOW (scroller),
+                                              240);
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroller), activity_list);
+  gtk_widget_add_css_class (scroller, "card");
+  gtk_widget_set_overflow (scroller, GTK_OVERFLOW_HIDDEN);
+
+  /* La "adjustment" es el modelo del scroll: posición (value), tamaño de
+   * lo visible (page-size) y tamaño total (upper). */
+  GtkAdjustment *adjustment =
+    gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (scroller));
+  g_signal_connect (adjustment, "value-changed",
+                    G_CALLBACK (on_activity_scrolled), NULL);
+  g_signal_connect (adjustment, "changed",
+                    G_CALLBACK (on_activity_resized), NULL);
+
+  adw_preferences_group_add (ADW_PREFERENCES_GROUP (activity_group), scroller);
   refresh_activity ();
   return activity_group;
 }
@@ -1137,6 +1255,7 @@ on_shutdown (GApplication *app, gpointer user_data)
   log_view = NULL;
   activity_group = NULL;
   activity_list = NULL;
+  g_clear_handle_id (&activity_scroll_id, g_source_remove);
   auth_service_stop ();
   tray_shutdown ();
   g_clear_pointer (&rows, g_ptr_array_unref);
