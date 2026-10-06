@@ -13,6 +13,8 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
   la ventana, no en una ventana aparte.
 - **Recuerda tu sesión**: si tu proveedor de identidad te mantiene la sesión
   iniciada, el siguiente login pasa solo sin enseñar nada.
+- **Icono en la barra superior** con el estado actual y un menú para conectar
+  o desconectar. Al cerrar la ventana, la app sigue en segundo plano.
 - **Conectar sin contraseña**, sin regalar root (ver [Seguridad](#seguridad)).
 
 > **Estado:** en sus primeras versiones, pero ya sirve para el día a día. La
@@ -23,11 +25,16 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
 
 - [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect)
   2.x instalado (`gpclient` en `/usr/bin`).
-- GTK 4, libadwaita ≥ 1.6 y WebKitGTK 6.0. En Ubuntu/Debian:
+- GTK 4, libadwaita ≥ 1.6, WebKitGTK 6.0 y libayatana-appindicator-glib.
+  En Ubuntu/Debian:
 
   ```bash
-  sudo apt install meson ninja-build pkg-config libadwaita-1-dev libwebkitgtk-6.0-dev
+  sudo apt install meson ninja-build pkg-config libadwaita-1-dev libwebkitgtk-6.0-dev libayatana-appindicator-glib-dev
   ```
+- Para el icono de la barra superior en GNOME, la
+  [extensión AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/)
+  (viene activada en Ubuntu). Sin ella la app funciona, pero cerrar la ventana
+  la cierra.
 
 ## Compilar
 
@@ -100,9 +107,8 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Próximamente
 
-Icono en la barra superior, seguir en segundo plano al cerrar la ventana, un
-registro más sencillo con un botón de "ver detalles", temas e interfaz en
-inglés. Ver [TODO.md](TODO.md).
+Un registro más sencillo con un botón de "ver detalles", temas, interfaz en
+inglés y arrancar sola al iniciar sesión. Ver [TODO.md](TODO.md).
 
 ## Licencia
 
