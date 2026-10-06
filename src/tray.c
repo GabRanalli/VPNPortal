@@ -92,8 +92,12 @@ static const char introspection_xml[] =
   "  </interface>"
   "</node>";
 
-/* Una entrada del menú. Su id en D-Bus es su posición + 1 (el 0 es la
- * raíz, el "menú" que contiene a todas). */
+/* Una entrada del menú. Cada una tiene un id en D-Bus (el 0 es la raíz,
+ * el "menú" que contiene a todas). OJO: un id NUNCA se reutiliza para otra
+ * entrada. La extensión de GNOME guarda cada entrada por su id y, si el
+ * mismo id pasa de ser una raya a ser "Mostrar ventana", no se entera del
+ * cambio de tipo y la pinta mal. Por eso cada vez que rehacemos el menú
+ * las entradas reciben ids nuevos. */
 typedef enum {
   ENTRY_TEXT,        /* solo texto (no se puede pulsar) */
   ENTRY_TOGGLE,      /* conectar/desconectar una VPN */
@@ -103,6 +107,7 @@ typedef enum {
 } EntryKind;
 
 typedef struct {
+  int        id;
   EntryKind  kind;
   char      *label;
   char      *vpn_id;   /* solo en ENTRY_TOGGLE */
@@ -119,6 +124,7 @@ static char            *app_id;
 
 static GArray          *entries;      /* de Entry */
 static guint32          revision;     /* sube cada vez que cambia el menú */
+static int              next_id = 1;  /* el siguiente id libre */
 static char            *icon_name;
 static char            *status_text;
 static char            *activation_token;  /* el último que nos dieron */
@@ -141,7 +147,7 @@ entry_clear (gpointer data)
 static void
 add_entry (EntryKind kind, const char *label, const char *vpn_id)
 {
-  Entry entry = { kind, NULL, g_strdup (vpn_id) };
+  Entry entry = { next_id++, kind, NULL, g_strdup (vpn_id) };
 
   /* En DBusMenu, "_" marca la letra de atajo (como en "_Archivo"). Para
    * que un "_" del nombre de una VPN se vea tal cual, se escribe "__". */
@@ -182,6 +188,28 @@ root_properties (void)
   return g_variant_builder_end (&props);
 }
 
+/* La entrada con ese id, o NULL si no existe (o ya no existe). */
+static const Entry *
+find_entry (int id)
+{
+  for (guint i = 0; i < entries->len; i++) {
+    const Entry *entry = &g_array_index (entries, Entry, i);
+    if (entry->id == id)
+      return entry;
+  }
+  return NULL;
+}
+
+/* Propiedades de la raíz (id 0) o de una entrada; NULL si no existe. */
+static GVariant *
+properties_for_id (int id)
+{
+  if (id == 0)
+    return root_properties ();
+  const Entry *entry = find_entry (id);
+  return entry != NULL ? entry_properties (entry) : NULL;
+}
+
 /* El árbol (id, propiedades, hijos) que pide GetLayout. Nuestro menú es
  * plano: la raíz tiene hijos y ellos ninguno. */
 static GVariant *
@@ -194,7 +222,7 @@ build_layout (int parent_id, int depth)
     if (depth != 0)
       for (guint i = 0; i < entries->len; i++) {
         const Entry *entry = &g_array_index (entries, Entry, i);
-        GVariant *child = g_variant_new ("(i@a{sv}@av)", (int) i + 1,
+        GVariant *child = g_variant_new ("(i@a{sv}@av)", entry->id,
                                          entry_properties (entry),
                                          g_variant_new_array (G_VARIANT_TYPE_VARIANT,
                                                               NULL, 0));
@@ -203,15 +231,14 @@ build_layout (int parent_id, int depth)
     return g_variant_new ("(i@a{sv}av)", 0, root_properties (), &children);
   }
 
-  const Entry *entry = &g_array_index (entries, Entry, parent_id - 1);
-  return g_variant_new ("(i@a{sv}av)", parent_id, entry_properties (entry),
-                        &children);
+  return g_variant_new ("(i@a{sv}av)", parent_id,
+                        entry_properties (find_entry (parent_id)), &children);
 }
 
 static gboolean
 valid_id (int id)
 {
-  return id >= 0 && id <= (int) entries->len;
+  return id == 0 || find_entry (id) != NULL;
 }
 
 /* Pulsaron la entrada 'id'. Copiamos lo necesario ANTES de llamar a la
@@ -219,10 +246,10 @@ valid_id (int id)
 static void
 activate_entry (int id)
 {
-  if (id <= 0 || id > (int) entries->len)
-    return;
+  const Entry *entry = find_entry (id);
+  if (entry == NULL)
+    return;   /* un clic en un menú viejo que ya no existe */
 
-  const Entry *entry = &g_array_index (entries, Entry, id - 1);
   EntryKind kind = entry->kind;
   g_autofree char *vpn_id = g_strdup (entry->vpn_id);
   /* Cada token sirve una sola vez: lo "robamos" para gastarlo ahora. */
@@ -294,11 +321,9 @@ handle_method_call (GDBusConnection       *connection,
                                                        sizeof (gint32));
     for (gsize i = 0; i < n_ids; i++) {
       int id = id_list[i];
-      if (!valid_id (id))
+      GVariant *props = properties_for_id (id);
+      if (props == NULL)
         continue;
-      GVariant *props = id == 0
-        ? root_properties ()
-        : entry_properties (&g_array_index (entries, Entry, id - 1));
       g_variant_builder_add (&result, "(i@a{sv})", id, props);
     }
     g_dbus_method_invocation_return_value (
@@ -309,10 +334,8 @@ handle_method_call (GDBusConnection       *connection,
     g_variant_get (parameters, "(i&s)", &id, &name);
     /* ref_sink: las variantes recién creadas son "flotantes"; así pasan
      * a ser nuestras y g_autoptr las puede liberar sin problema. */
-    g_autoptr (GVariant) props = !valid_id (id) ? NULL
-      : g_variant_ref_sink (id == 0 ? root_properties ()
-                            : entry_properties (&g_array_index (entries, Entry,
-                                                                id - 1)));
+    GVariant *found = properties_for_id (id);
+    g_autoptr (GVariant) props = found ? g_variant_ref_sink (found) : NULL;
     g_autoptr (GVariant) value = props
       ? g_variant_lookup_value (props, name, NULL) : NULL;
     if (value == NULL) {
