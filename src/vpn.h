@@ -9,19 +9,14 @@
 
 #include <gio/gio.h>
 
+#include "config.h"
+
 typedef enum {
   VPN_DISCONNECTED,
   VPN_CONNECTING,     /* proceso lanzado, aún sin túnel (login, etc.) */
   VPN_CONNECTED,      /* existe el interfaz del túnel */
   VPN_DISCONNECTING,  /* le hemos mandado Ctrl+C y esperamos a que salga */
 } VpnState;
-
-/* Datos fijos de cada VPN. 'id' es lo que recibe el helper con sudo. */
-typedef struct {
-  const char *id;
-  const char *title;
-  const char *subtitle;
-} VpnInfo;
 
 /*
  * "Tipo opaco": declaramos que existe struct _Vpn pero NO sus campos.
@@ -38,16 +33,17 @@ typedef struct _Vpn Vpn;
 typedef void (*VpnStateFunc) (Vpn *vpn, VpnState state, gpointer user_data);
 typedef void (*VpnLineFunc)  (Vpn *vpn, const char *line, gpointer user_data);
 
-Vpn           *vpn_new             (const VpnInfo *info,
-                                    VpnStateFunc   on_state,
-                                    VpnLineFunc    on_line,
-                                    gpointer       user_data);
-void           vpn_free            (Vpn *vpn);
+/* 'config' no se copia: debe vivir al menos tanto como el Vpn. */
+Vpn             *vpn_new             (const VpnConfig *config,
+                                      VpnStateFunc     on_state,
+                                      VpnLineFunc      on_line,
+                                      gpointer         user_data);
+void             vpn_free            (Vpn *vpn);
 
-const VpnInfo *vpn_get_info        (Vpn *vpn);
-VpnState       vpn_get_state       (Vpn *vpn);
+const VpnConfig *vpn_get_config      (Vpn *vpn);
+VpnState         vpn_get_state       (Vpn *vpn);
 
-void           vpn_connect         (Vpn *vpn);
-void           vpn_disconnect      (Vpn *vpn);
+void             vpn_connect         (Vpn *vpn);
+void             vpn_disconnect      (Vpn *vpn);
 
-const char    *vpn_state_to_string (VpnState state);
+const char      *vpn_state_to_string (VpnState state);

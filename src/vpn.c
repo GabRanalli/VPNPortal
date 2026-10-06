@@ -6,6 +6,13 @@
  * el proceso escriba o termine, porque mientras tanto la ventana se
  * congelaría. En su lugar decimos "cuando haya una línea / cuando
  * termine, llama a esta función" y volvemos al bucle de eventos.
+ *
+ * Conectar tiene dos pasos:
+ *   1. Si el portal (o la gateway) no está aprobado todavía, se aprueba
+ *      con "pkexec gp-vpn-helper allow ..." -> GNOME pide la contraseña.
+ *      Solo pasa la primera vez para cada servidor.
+ *   2. "sudo -n gp-vpn-helper connect ..." -> sin contraseña, pero el
+ *      helper solo acepta servidores aprobados en el paso 1.
  */
 #include "vpn.h"
 
@@ -18,6 +25,12 @@
 #define HELPER_PATH "/usr/local/sbin/gp-vpn-helper"
 #endif
 
+/* Lista de servidores aprobados. La escribe el helper (como root); la
+ * app solo la lee para saber si hace falta pedir aprobación. */
+#ifndef ALLOWLIST_PATH
+#define ALLOWLIST_PATH "/etc/gp-vpn/allowed-hosts"
+#endif
+
 /* Cuando gpclient conecta, aparece el interfaz de red del túnel. */
 #ifndef TUN_PATH
 #define TUN_PATH "/sys/class/net/tun0"
@@ -27,14 +40,15 @@
 #define DISCONNECT_TIMEOUT 10
 
 struct _Vpn {
-  const VpnInfo    *info;
+  const VpnConfig  *config;
   VpnState          state;
 
   VpnStateFunc      on_state;
   VpnLineFunc       on_line;
   gpointer          user_data;
 
-  GSubprocess      *proc;         /* NULL si no hay proceso en marcha */
+  GSubprocess      *approve_proc; /* pkexec ... allow (paso 1), o NULL */
+  GSubprocess      *proc;         /* sudo ... connect (paso 2), o NULL */
   GDataInputStream *out;          /* lector línea a línea de su salida */
   GCancellable     *cancellable;  /* para abortar lo pendiente al cerrar */
   guint             poll_id;      /* temporizador que mira el túnel */
@@ -68,6 +82,19 @@ emit_note (Vpn *vpn, const char *format, ...)
   vpn->on_line (vpn, line, vpn->user_data);
 }
 
+/* Pasa al registro un bloque de texto, línea a línea. */
+static void
+emit_output (Vpn *vpn, const char *output)
+{
+  if (output == NULL)
+    return;
+
+  g_auto (GStrv) lines = g_strsplit (output, "\n", -1);
+  for (char **line = lines; *line != NULL; line++)
+    if (**line != '\0')
+      vpn->on_line (vpn, *line, vpn->user_data);
+}
+
 /* Para y limpia todo lo de la conexión actual (menos el lector de
  * salida, que se suelta solo cuando llega al final; ver on_line_read). */
 static void
@@ -82,7 +109,7 @@ stop_run (Vpn *vpn)
 }
 
 /* ---------------------------------------------------------------- */
-/* Callbacks asíncronos                                             */
+/* Paso 2: la conexión                                              */
 /* ---------------------------------------------------------------- */
 
 static void read_next_line (Vpn *vpn);
@@ -191,19 +218,164 @@ force_disconnect (gpointer user_data)
   return G_SOURCE_REMOVE;   /* = no volver a llamarme */
 }
 
+static void
+start_connection (Vpn *vpn)
+{
+  const VpnConfig *config = vpn->config;
+  g_autoptr (GError) error = NULL;
+
+  /*
+   * Montamos la orden pieza a pieza, por ejemplo:
+   *   sudo -n gp-vpn-helper connect vpn.empresa.example --user yo --hip
+   *   -n = "non-interactive": si sudo necesitara contraseña, falla al
+   *        momento en vez de quedarse esperando un teclado que no hay.
+   * Cada dato va en su propio argumento (nunca se junta en un texto que
+   * luego interprete una shell), así un valor raro no puede "romper" la
+   * orden. Aun así, el helper vuelve a comprobarlo todo.
+   */
+  g_autoptr (GStrvBuilder) builder = g_strv_builder_new ();
+  g_strv_builder_add_many (builder, "sudo", "-n", HELPER_PATH, "connect",
+                           config->portal, NULL);
+  if (*config->gateway != '\0')
+    g_strv_builder_add_many (builder, "--gateway", config->gateway, NULL);
+  if (*config->user != '\0')
+    g_strv_builder_add_many (builder, "--user", config->user, NULL);
+  if (config->hip)
+    g_strv_builder_add (builder, "--hip");
+  g_auto (GStrv) argv = g_strv_builder_end (builder);
+
+  g_autofree char *command = g_strjoinv (" ", argv);
+  emit_note (vpn, "Lanzando: %s", command);
+
+  /* Flags: queremos LEER su salida (STDOUT_PIPE) y que los errores
+   * (stderr) vayan por la misma tubería (STDERR_MERGE). La entrada
+   * estándar queda en /dev/null: si gpclient preguntara algo por
+   * teclado, falla en lugar de colgarse. */
+  vpn->proc = g_subprocess_newv ((const char * const *) argv,
+                                 G_SUBPROCESS_FLAGS_STDOUT_PIPE |
+                                 G_SUBPROCESS_FLAGS_STDERR_MERGE,
+                                 &error);
+  if (vpn->proc == NULL) {
+    emit_note (vpn, "No se pudo lanzar sudo: %s", error->message);
+    set_state (vpn, VPN_DISCONNECTED);
+    return;
+  }
+
+  set_state (vpn, VPN_CONNECTING);
+
+  /* Si quedaba un lector de una conexión anterior, lo soltamos; su
+   * lectura pendiente verá que ya no es vpn->out y se parará sola. */
+  g_clear_object (&vpn->out);
+  vpn->out = g_data_input_stream_new (g_subprocess_get_stdout_pipe (vpn->proc));
+  read_next_line (vpn);
+
+  g_subprocess_wait_async (vpn->proc, vpn->cancellable,
+                           on_process_exited, vpn);
+  vpn->poll_id = g_timeout_add_seconds (1, poll_tunnel, vpn);
+}
+
+/* ---------------------------------------------------------------- */
+/* Paso 1: aprobación de hosts                                      */
+/* ---------------------------------------------------------------- */
+
+/* ¿Está 'host' en la lista de aprobados? (Solo para no pedir permiso
+ * de más; quien de verdad lo hace cumplir es el helper.) */
+static gboolean
+host_is_approved (const char *host)
+{
+  g_autofree char *contents = NULL;
+
+  if (!g_file_get_contents (ALLOWLIST_PATH, &contents, NULL, NULL))
+    return FALSE;   /* aún no existe: no hay nada aprobado */
+
+  g_auto (GStrv) lines = g_strsplit (contents, "\n", -1);
+  for (char **line = lines; *line != NULL; line++)
+    if (g_ascii_strcasecmp (g_strstrip (*line), host) == 0)
+      return TRUE;
+  return FALSE;
+}
+
+/* pkexec ha terminado: contraseña correcta, cancelada o fallida. */
+static void
+on_approval_done (GObject *source, GAsyncResult *result, gpointer user_data)
+{
+  GSubprocess *proc = G_SUBPROCESS (source);
+  g_autoptr (GError) error = NULL;
+  g_autofree char *output = NULL;
+
+  if (!g_subprocess_communicate_utf8_finish (proc, result, &output, NULL,
+                                             &error) &&
+      g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+    return;   /* app cerrándose: no tocar el Vpn */
+
+  Vpn *vpn = user_data;
+  if (proc != vpn->approve_proc)
+    return;
+
+  emit_output (vpn, output);
+
+  gboolean approved = g_subprocess_get_if_exited (proc) &&
+                      g_subprocess_get_exit_status (proc) == 0;
+  g_clear_object (&vpn->approve_proc);
+
+  /* Si mientras tanto le diste a Desconectar, el estado ya no es
+   * CONNECTING y no seguimos aunque se haya aprobado. */
+  if (approved && vpn->state == VPN_CONNECTING) {
+    start_connection (vpn);
+    return;
+  }
+
+  if (!approved)
+    emit_note (vpn, "No se ha aprobado (¿se canceló la contraseña?)");
+  set_state (vpn, VPN_DISCONNECTED);
+}
+
+static void
+start_approval (Vpn *vpn, const char * const *hosts)
+{
+  g_autoptr (GError) error = NULL;
+
+  /* pkexec es el "sudo gráfico" de GNOME: muestra la ventana de
+   * contraseña de siempre y ejecuta el helper como root. */
+  g_autoptr (GStrvBuilder) builder = g_strv_builder_new ();
+  g_strv_builder_add_many (builder, "pkexec", HELPER_PATH, "allow", NULL);
+  g_strv_builder_addv (builder, (const char **) hosts);
+  g_auto (GStrv) argv = g_strv_builder_end (builder);
+
+  g_autofree char *list = g_strjoinv (", ", (char **) hosts);
+  emit_note (vpn, "Primera conexión a %s: hay que aprobarlo una vez "
+                  "(te pedirá la contraseña)", list);
+
+  vpn->approve_proc = g_subprocess_newv ((const char * const *) argv,
+                                         G_SUBPROCESS_FLAGS_STDOUT_PIPE |
+                                         G_SUBPROCESS_FLAGS_STDERR_MERGE,
+                                         &error);
+  if (vpn->approve_proc == NULL) {
+    emit_note (vpn, "No se pudo lanzar pkexec: %s", error->message);
+    return;
+  }
+
+  set_state (vpn, VPN_CONNECTING);
+
+  /* communicate = "espera a que termine y dame todo lo que imprimió". */
+  g_subprocess_communicate_utf8_async (vpn->approve_proc, NULL,
+                                       vpn->cancellable,
+                                       on_approval_done, vpn);
+}
+
 /* ---------------------------------------------------------------- */
 /* API pública                                                      */
 /* ---------------------------------------------------------------- */
 
 Vpn *
-vpn_new (const VpnInfo *info,
-         VpnStateFunc   on_state,
-         VpnLineFunc    on_line,
-         gpointer       user_data)
+vpn_new (const VpnConfig *config,
+         VpnStateFunc     on_state,
+         VpnLineFunc      on_line,
+         gpointer         user_data)
 {
   /* g_new0: malloc + poner todo a cero (punteros NULL, ids 0...). */
   Vpn *vpn = g_new0 (Vpn, 1);
-  vpn->info = info;
+  vpn->config = config;
   vpn->state = VPN_DISCONNECTED;
   vpn->on_state = on_state;
   vpn->on_line = on_line;
@@ -221,19 +393,22 @@ vpn_free (Vpn *vpn)
   /* Si cerramos la app con la VPN puesta, la desconectamos. */
   if (vpn->proc != NULL)
     g_subprocess_send_signal (vpn->proc, SIGINT);
+  if (vpn->approve_proc != NULL)
+    g_subprocess_send_signal (vpn->approve_proc, SIGTERM);
 
   /* Las operaciones pendientes recibirán "cancelado" y no tocarán vpn. */
   g_cancellable_cancel (vpn->cancellable);
   stop_run (vpn);
+  g_clear_object (&vpn->approve_proc);
   g_clear_object (&vpn->out);
   g_clear_object (&vpn->cancellable);
   g_free (vpn);
 }
 
-const VpnInfo *
-vpn_get_info (Vpn *vpn)
+const VpnConfig *
+vpn_get_config (Vpn *vpn)
 {
-  return vpn->info;
+  return vpn->config;
 }
 
 VpnState
@@ -256,45 +431,37 @@ vpn_connect (Vpn *vpn)
     return;
   }
 
-  g_autoptr (GError) error = NULL;
+  /* ¿Qué servidores de esta VPN faltan por aprobar? Como mucho dos
+   * (portal y gateway) + el NULL que marca el final de la lista. */
+  const char *pending[3];
+  guint n = 0;
+  if (!host_is_approved (vpn->config->portal))
+    pending[n++] = vpn->config->portal;
+  if (*vpn->config->gateway != '\0' &&
+      !host_is_approved (vpn->config->gateway))
+    pending[n++] = vpn->config->gateway;
+  pending[n] = NULL;
 
-  /*
-   * Equivale a escribir en la terminal:  sudo -n gp-vpn-helper empresa
-   *   -n = "non-interactive": si sudo necesitara contraseña, falla al
-   *        momento en vez de quedarse esperando un teclado que no hay.
-   * Flags: queremos LEER su salida (STDOUT_PIPE) y que los errores
-   * (stderr) vayan por la misma tubería (STDERR_MERGE). La entrada
-   * estándar queda en /dev/null: si gpclient preguntara algo por
-   * teclado, falla en lugar de colgarse.
-   */
-  vpn->proc = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE |
-                                G_SUBPROCESS_FLAGS_STDERR_MERGE,
-                                &error,
-                                "sudo", "-n", HELPER_PATH, vpn->info->id,
-                                NULL);
-  if (vpn->proc == NULL) {
-    emit_note (vpn, "No se pudo lanzar sudo: %s", error->message);
-    return;
-  }
-
-  emit_note (vpn, "Lanzando: sudo -n %s %s", HELPER_PATH, vpn->info->id);
-  set_state (vpn, VPN_CONNECTING);
-
-  /* Si quedaba un lector de una conexión anterior, lo soltamos; su
-   * lectura pendiente verá que ya no es vpn->out y se parará sola. */
-  g_clear_object (&vpn->out);
-  vpn->out = g_data_input_stream_new (g_subprocess_get_stdout_pipe (vpn->proc));
-  read_next_line (vpn);
-
-  g_subprocess_wait_async (vpn->proc, vpn->cancellable,
-                           on_process_exited, vpn);
-  vpn->poll_id = g_timeout_add_seconds (1, poll_tunnel, vpn);
+  if (n > 0)
+    start_approval (vpn, pending);
+  else
+    start_connection (vpn);
 }
 
 void
 vpn_disconnect (Vpn *vpn)
 {
-  if (vpn->proc == NULL || vpn->state == VPN_DISCONNECTING)
+  if (vpn->state == VPN_DISCONNECTING)
+    return;
+
+  /* Aún en el paso 1 (ventana de contraseña abierta): lo cancelamos. */
+  if (vpn->approve_proc != NULL) {
+    set_state (vpn, VPN_DISCONNECTING);
+    g_subprocess_send_signal (vpn->approve_proc, SIGTERM);
+    return;
+  }
+
+  if (vpn->proc == NULL)
     return;
 
   /*
