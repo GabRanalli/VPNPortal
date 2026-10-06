@@ -10,6 +10,10 @@
 # falso. sudo y pkexec también son de mentira. Todo vive en build-demo/:
 # tu configuración y tus VPN reales no se tocan.
 #
+# OJO: no se cambian XDG_CONFIG_HOME / XDG_DATA_HOME para aislarla: GTK
+# también busca ahí tu tema de iconos y tus ajustes, y la demo se vería
+# distinta (sin iconos). Las rutas de la demo se fijan al compilar.
+#
 # Uso: tools/demo.sh
 
 set -euo pipefail
@@ -18,7 +22,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DEMO="$ROOT/build-demo"
 
 rm -rf "$DEMO"
-mkdir -p "$DEMO/bin" "$DEMO/config/vpnportal" "$DEMO/data" "$DEMO/cache" "$DEMO/etc"
+mkdir -p "$DEMO/bin" "$DEMO/etc"
 
 # --- gpclient de mentira: imita los pasos y crea un "túnel" (un fichero) ---
 cat > "$DEMO/gpclient" <<EOF
@@ -47,7 +51,7 @@ sed -e "s|^GPCLIENT=.*|GPCLIENT=$DEMO/gpclient|" \
 chmod +x "$DEMO/gpclient" "$DEMO/bin/sudo" "$DEMO/bin/pkexec" "$DEMO/vpnportal-helper"
 
 # --- dos VPN inventadas (dominios .example: reservados para ejemplos) ---
-cat > "$DEMO/config/vpnportal/vpns.ini" <<'EOF'
+cat > "$DEMO/vpns.ini" <<'EOF'
 [demo-empresa]
 name=Demo Empresa
 portal=vpn.empresa.example
@@ -72,11 +76,8 @@ gcc -std=c11 -O1 -o "$DEMO/vpnportal-demo" \
   -DHELPER_PATH="\"$DEMO/vpnportal-helper\"" \
   -DALLOWLIST_PATH="\"$DEMO/etc/allowed-hosts\"" \
   -DTUN_PATH="\"$DEMO/tun0\"" \
+  -DCONFIG_FILE_PATH="\"$DEMO/vpns.ini\"" \
   $(pkg-config --cflags --libs libadwaita-1 webkitgtk-6.0)
 
 echo "Arrancando VPN Portal (demo)…"
-PATH="$DEMO/bin:$PATH" \
-XDG_CONFIG_HOME="$DEMO/config" \
-XDG_DATA_HOME="$DEMO/data" \
-XDG_CACHE_HOME="$DEMO/cache" \
-  exec "$DEMO/vpnportal-demo"
+PATH="$DEMO/bin:$PATH" exec "$DEMO/vpnportal-demo"

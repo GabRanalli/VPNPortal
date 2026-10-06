@@ -11,9 +11,14 @@
 static char *
 config_path (void)
 {
+#ifdef CONFIG_FILE_PATH
+  /* Ruta fija elegida al compilar (lo usa el modo demo, tools/demo.sh). */
+  return g_strdup (CONFIG_FILE_PATH);
+#else
   /* g_get_user_config_dir() es ~/.config (o lo que diga $XDG_CONFIG_HOME). */
   return g_build_filename (g_get_user_config_dir (), "vpnportal", "vpns.ini",
                            NULL);
+#endif
 }
 
 VpnConfig *
