@@ -14,7 +14,8 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
 - **Recuerda tu sesión**: si tu proveedor de identidad te mantiene la sesión
   iniciada, el siguiente login pasa solo sin enseñar nada.
 - **Icono en la barra superior** con el estado actual y un menú para conectar
-  o desconectar. Al cerrar la ventana, la app sigue en segundo plano.
+  o desconectar. Al cerrar la ventana, la app sigue en segundo plano, y puede
+  arrancar sola (oculta en la barra) al iniciar sesión.
 - **Actividad clara**: los pasos de cada conexión en lenguaje normal
   ("Contactando con el portal…", "Conectada"), con el registro completo de
   `gpclient` a un clic (y un botón para copiarlo).
@@ -120,7 +121,7 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Próximamente
 
-Temas, interfaz en inglés y arrancar sola al iniciar sesión. Ver [TODO.md](TODO.md).
+Temas e interfaz en inglés. Ver [TODO.md](TODO.md).
 
 ## Licencia
 

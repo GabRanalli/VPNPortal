@@ -21,6 +21,45 @@ config_path (void)
 #endif
 }
 
+/* settings.ini va en la misma carpeta que vpns.ini (así la demo, que
+ * cambia la ruta de vpns.ini, tampoco toca tus ajustes). */
+static char *
+settings_path (void)
+{
+  g_autofree char *vpns = config_path ();
+  g_autofree char *dir = g_path_get_dirname (vpns);
+  return g_build_filename (dir, "settings.ini", NULL);
+}
+
+gboolean
+app_settings_get_bool (const char *key)
+{
+  g_autofree char *path = settings_path ();
+  g_autoptr (GKeyFile) keyfile = g_key_file_new ();
+
+  if (!g_key_file_load_from_file (keyfile, path, G_KEY_FILE_NONE, NULL))
+    return FALSE;
+  return g_key_file_get_boolean (keyfile, "app", key, NULL);
+}
+
+void
+app_settings_set_bool (const char *key, gboolean value)
+{
+  g_autofree char *path = settings_path ();
+  g_autofree char *dir = g_path_get_dirname (path);
+  g_autoptr (GKeyFile) keyfile = g_key_file_new ();
+
+  /* Cargamos lo que hubiera (si no existe, empezamos de cero) para no
+   * borrar otros ajustes al guardar este. */
+  g_key_file_load_from_file (keyfile, path, G_KEY_FILE_KEEP_COMMENTS, NULL);
+  g_key_file_set_boolean (keyfile, "app", key, value);
+
+  g_mkdir_with_parents (dir, 0700);
+  g_autoptr (GError) error = NULL;
+  if (!g_key_file_save_to_file (keyfile, path, &error))
+    g_warning ("No se pudo guardar %s: %s", path, error->message);
+}
+
 VpnConfig *
 vpn_config_new (void)
 {

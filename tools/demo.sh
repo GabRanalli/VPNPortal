@@ -95,4 +95,4 @@ gcc -std=c11 -O1 -o "$DEMO/vpnportal-demo" \
   $(pkg-config --cflags --libs libadwaita-1 webkitgtk-6.0)
 
 echo "Arrancando VPN Portal (demo)…"
-PATH="$DEMO/bin:$PATH" exec "$DEMO/vpnportal-demo"
+PATH="$DEMO/bin:$PATH" exec "$DEMO/vpnportal-demo" "$@"

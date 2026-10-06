@@ -1,9 +1,6 @@
 # Pendiente
 
 ## Siguiente
-- [ ] Arrancar sola al iniciar sesión (minimizada en la barra).
-- [ ] Avisar la primera vez que se cierra la ventana de que la app sigue
-      en la barra superior.
 - [ ] Temas: claro, oscuro y algunas variantes de color, en Preferencias.
 - [ ] Interfaz en inglés (y quizá traducción al español con gettext).
 - [ ] Opción para olvidar la sesión de login guardada (como `gpauth --clean`).
@@ -22,6 +19,8 @@
 - [x] Al cerrar la ventana, seguir en segundo plano sin desconectar.
 - [x] Cambiar de VPN desde el menú o la ventana, con aviso.
 - [x] Modo demo (tools/demo.sh) para probar sin VPN ni login.
+- [x] Arrancar sola al iniciar sesión, oculta en la barra (--background).
+- [x] Aviso la primera vez que se cierra la ventana.
 - [x] Registro escueto ("Actividad") con los pasos y un botón para ver y
       copiar el registro completo de gpclient.
 - [x] Id de la app io.github.GabRanalli.VPNPortal, licencia GPL-3.0 y README

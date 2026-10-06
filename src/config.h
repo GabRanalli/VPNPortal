@@ -31,6 +31,11 @@ void       vpn_config_free          (VpnConfig *config);
 gboolean   vpn_config_host_is_valid (const char *host);
 gboolean   vpn_config_user_is_valid (const char *user);
 
+/* Ajustes sueltos de la app (sí/no), en settings.ini junto a vpns.ini.
+ * Si no existe el ajuste, devuelve FALSE. */
+gboolean   app_settings_get_bool    (const char *key);
+void       app_settings_set_bool    (const char *key, gboolean value);
+
 /* Devuelve un array de VpnConfig* (vacío si aún no hay fichero). */
 GPtrArray *vpn_config_load          (GError **error);
 gboolean   vpn_config_save          (GPtrArray *configs, GError **error);

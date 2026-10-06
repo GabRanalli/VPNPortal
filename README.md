@@ -14,7 +14,8 @@ of [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnec
 - **Remembers your session**: if your identity provider keeps you signed in,
   the next login happens on its own without showing anything.
 - **Top bar icon** showing the current status, with a menu to connect or
-  disconnect. Closing the window keeps the app running in the background.
+  disconnect. Closing the window keeps the app running in the background,
+  and it can start automatically (hidden in the top bar) when you log in.
 - **Clear activity view**: the steps of each connection in plain words
   ("Contacting the portal…", "Connected"), with the full `gpclient` log one
   click away (and a button to copy it).
@@ -119,7 +120,7 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Roadmap
 
-Themes, an English UI and starting automatically with the session. See
+Themes and an English UI. See
 [TODO.md](TODO.md) (Spanish).
 
 ## License

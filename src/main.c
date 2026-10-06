@@ -16,7 +16,9 @@
  */
 
 #include <adwaita.h>
+#include <errno.h>
 #include <glib-unix.h>
+#include <glib/gstdio.h>
 
 #include "auth.h"
 #include "config.h"
@@ -1043,22 +1045,183 @@ build_list_page (void)
   return page;
 }
 
+/* ---------------------------------------------------------------- */
+/* Aviso la primera vez que se cierra la ventana                    */
+/* ---------------------------------------------------------------- */
+
+static gboolean close_hint_open;   /* el aviso está a la vista */
+
+static void
+on_close_hint_response (AdwAlertDialog *alert, const char *response,
+                        gpointer user_data)
+{
+  (void) alert; (void) user_data;
+
+  close_hint_open = FALSE;
+  app_settings_set_bool ("close-hint-shown", TRUE);   /* no volver a avisar */
+
+  if (g_str_equal (response, "quit"))
+    request_quit ();
+  else
+    gtk_widget_set_visible (GTK_WIDGET (main_window), FALSE);
+}
+
+static void
+show_close_hint (void)
+{
+  if (close_hint_open)
+    return;   /* ya está a la vista (p. ej. pulsaste la X dos veces) */
+
+  AdwDialog *alert = adw_alert_dialog_new (
+    "VPN Portal sigue en marcha",
+    "Al cerrar la ventana, la app se queda en la barra superior para que "
+    "puedas conectar y desconectar desde su icono. Para cerrarla del todo, "
+    "usa «Salir» en ese menú o pulsa Ctrl+Q.");
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
+                                  "quit", "Salir del todo",
+                                  "hide", "Entendido",
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "hide",
+                                            ADW_RESPONSE_SUGGESTED);
+  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (alert), "hide");
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (alert), "hide");
+  g_signal_connect (alert, "response",
+                    G_CALLBACK (on_close_hint_response), NULL);
+  close_hint_open = TRUE;
+  adw_dialog_present (alert, GTK_WIDGET (main_window));
+}
+
 /* Al pulsar la X de la ventana. Devolver TRUE significa "ya me encargo
  * yo, no la destruyas": la ocultamos y la app sigue en la barra. */
 static gboolean
 on_close_request (GtkWindow *window, gpointer user_data)
 {
-  GApplication *app = user_data;
+  (void) user_data;
 
   if (tray_is_available ()) {
-    gtk_widget_set_visible (GTK_WIDGET (window), FALSE);
+    if (!app_settings_get_bool ("close-hint-shown"))
+      show_close_hint ();   /* la primera vez, explicamos qué pasa */
+    else
+      gtk_widget_set_visible (GTK_WIDGET (window), FALSE);
     return TRUE;
   }
 
   /* Sin icono en la barra no habría forma de volver: salimos. */
-  (void) app;
   request_quit ();
   return TRUE;
+}
+
+/* ---------------------------------------------------------------- */
+/* Arrancar al iniciar sesión                                       */
+/* ---------------------------------------------------------------- */
+
+/*
+ * Los escritorios de Linux lanzan al iniciar sesión cada fichero .desktop
+ * que haya en ~/.config/autostart. Activar la opción = crear el nuestro;
+ * desactivarla = borrarlo. No hace falta nada más.
+ */
+static char *
+autostart_path (void)
+{
+  g_autofree char *name = g_strconcat (VPNPORTAL_APP_ID, ".desktop", NULL);
+  return g_build_filename (g_get_user_config_dir (), "autostart", name, NULL);
+}
+
+/* En la línea Exec de un .desktop, una ruta con espacios va entre
+ * comillas dobles, y dentro se escapan  " ` $ \  con una barra. */
+static char *
+quote_exec_arg (const char *arg)
+{
+  GString *quoted = g_string_new ("\"");
+  for (const char *p = arg; *p != '\0'; p++) {
+    if (strchr ("\"`$\\", *p) != NULL)
+      g_string_append_c (quoted, '\\');
+    g_string_append_c (quoted, *p);
+  }
+  g_string_append_c (quoted, '"');
+  return g_string_free (quoted, FALSE);
+}
+
+static gboolean
+autostart_write (GError **error)
+{
+  /* /proc/self/exe apunta al ejecutable que estamos corriendo ahora. */
+  g_autofree char *exe = g_file_read_link ("/proc/self/exe", error);
+  if (exe == NULL)
+    return FALSE;
+
+  g_autofree char *quoted = quote_exec_arg (exe);
+  g_autofree char *exec = g_strdup_printf ("%s --background", quoted);
+
+  g_autoptr (GKeyFile) desktop = g_key_file_new ();
+  const char *group = G_KEY_FILE_DESKTOP_GROUP;
+  g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_TYPE,
+                         "Application");
+  g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_NAME,
+                         "VPN Portal");
+  g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_COMMENT,
+                         "Gestor de VPN GlobalProtect");
+  g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_ICON,
+                         "network-vpn");
+  g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_EXEC, exec);
+  g_key_file_set_boolean (desktop, group, "X-GNOME-Autostart-enabled", TRUE);
+
+  g_autofree char *path = autostart_path ();
+  g_autofree char *dir = g_path_get_dirname (path);
+  g_mkdir_with_parents (dir, 0700);
+  return g_key_file_save_to_file (desktop, path, error);
+}
+
+/* La casilla del menú. Es una acción "con estado" (TRUE/FALSE): GTK la
+ * pinta como casilla y, al pulsarla, nos pide cambiar el estado. Solo lo
+ * cambiamos si de verdad se ha podido crear/borrar el fichero. */
+static void
+on_autostart_change_state (GSimpleAction *action, GVariant *value,
+                           gpointer user_data)
+{
+  (void) user_data;
+  g_autoptr (GError) error = NULL;
+  g_autofree char *path = autostart_path ();
+
+  if (g_variant_get_boolean (value)) {
+    if (!autostart_write (&error)) {
+      append_log ("App", error->message);
+      return;
+    }
+  } else if (g_unlink (path) != 0 && errno != ENOENT) {
+    append_log ("App", g_strerror (errno));
+    return;
+  }
+  g_simple_action_set_state (action, value);
+}
+
+/* ---------------------------------------------------------------- */
+/* Arrancar oculta (--background)                                   */
+/* ---------------------------------------------------------------- */
+
+static gboolean start_hidden;   /* nos lanzaron con --background */
+
+/* Se ejecuta antes de nada con las opciones de la línea de órdenes. */
+static int
+on_handle_local_options (GApplication *app, GVariantDict *options,
+                         gpointer user_data)
+{
+  (void) app; (void) user_data;
+  if (g_variant_dict_contains (options, "background"))
+    start_hidden = TRUE;
+  return -1;   /* -1 = "sigue arrancando con normalidad" */
+}
+
+/* Red de seguridad: si arrancamos ocultos pero nadie pinta iconos en la
+ * barra (p. ej. sin la extensión), enseñamos la ventana: si no, la app
+ * estaría en marcha sin forma de llegar a ella. */
+static gboolean
+show_window_if_no_tray (gpointer user_data)
+{
+  (void) user_data;
+  if (main_window != NULL && !tray_is_available ())
+    gtk_window_present (main_window);
+  return G_SOURCE_REMOVE;
 }
 
 static void
@@ -1085,6 +1248,26 @@ on_activate (GtkApplication *app, gpointer user_data)
   g_signal_connect (add, "clicked", G_CALLBACK (on_add_clicked), NULL);
   adw_header_bar_pack_start (ADW_HEADER_BAR (header), add);
 
+  /* El menú principal (☰). Cada entrada apunta a una acción "app.…";
+   * "app.autostart" tiene estado TRUE/FALSE y por eso sale como casilla. */
+  g_autoptr (GMenu) menu = g_menu_new ();
+  g_autoptr (GMenu) options_section = g_menu_new ();
+  g_menu_append (options_section, "Arrancar al iniciar sesión",
+                 "app.autostart");
+  g_menu_append_section (menu, NULL, G_MENU_MODEL (options_section));
+  g_autoptr (GMenu) quit_section = g_menu_new ();
+  g_menu_append (quit_section, "Salir", "app.quit");
+  g_menu_append_section (menu, NULL, G_MENU_MODEL (quit_section));
+
+  GtkWidget *menu_button = gtk_menu_button_new ();
+  gtk_menu_button_set_icon_name (GTK_MENU_BUTTON (menu_button),
+                                 "open-menu-symbolic");
+  gtk_menu_button_set_menu_model (GTK_MENU_BUTTON (menu_button),
+                                  G_MENU_MODEL (menu));
+  gtk_menu_button_set_primary (GTK_MENU_BUTTON (menu_button), TRUE);  /* F10 */
+  gtk_widget_set_tooltip_text (menu_button, "Menú principal");
+  adw_header_bar_pack_end (ADW_HEADER_BAR (header), menu_button);
+
   /* GtkStack: varias páginas apiladas, se ve una cada vez. */
   stack = gtk_stack_new ();
   gtk_stack_set_transition_type (GTK_STACK (stack),
@@ -1102,6 +1285,14 @@ on_activate (GtkApplication *app, gpointer user_data)
     append_log ("App", startup_error);
 
   refresh_rows ();
+
+  /* Con --background (al iniciar sesión) la ventana se crea pero no se
+   * enseña: la app queda solo en la barra. */
+  if (start_hidden) {
+    start_hidden = FALSE;   /* solo la primera vez */
+    g_timeout_add_seconds (10, show_window_if_no_tray, NULL);
+    return;
+  }
   gtk_window_present (main_window);
 }
 
@@ -1215,9 +1406,25 @@ on_startup (GApplication *app, gpointer user_data)
   /* Ctrl+Q para salir del todo (desconectando). */
   static const GActionEntry app_actions[] = {
     { .name = "quit", .activate = on_quit_action },
+    /* Sin .activate y con estado sí/no: GLib la convierte en un
+     * interruptor que llama a .change_state con el valor contrario. */
+    { .name = "autostart", .state = "false",
+      .change_state = on_autostart_change_state },
   };
   g_action_map_add_action_entries (G_ACTION_MAP (app), app_actions,
                                    G_N_ELEMENTS (app_actions), app);
+
+  /* La casilla refleja si el fichero de autoarranque existe. Si existe,
+   * lo reescribimos para que apunte al ejecutable actual (por si lo has
+   * movido o recompilado en otra carpeta). */
+  g_autofree char *autostart = autostart_path ();
+  gboolean autostart_on = g_file_test (autostart, G_FILE_TEST_EXISTS);
+  if (autostart_on)
+    autostart_write (NULL);
+  g_simple_action_set_state (
+    G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (app),
+                                                 "autostart")),
+    g_variant_new_boolean (autostart_on));
   gtk_application_set_accels_for_action (GTK_APPLICATION (app), "app.quit",
                                          (const char *[]) { "<Control>q",
                                                             NULL });
@@ -1271,6 +1478,13 @@ main (int argc, char *argv[])
   AdwApplication *app = adw_application_new (VPNPORTAL_APP_ID,
                                              G_APPLICATION_DEFAULT_FLAGS);
 
+  /* La opción --background (y su explicación en --help). */
+  g_application_add_main_option (G_APPLICATION (app), "background", 'b',
+                                 G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE,
+                                 "Arrancar oculta, solo con el icono de la "
+                                 "barra", NULL);
+  g_signal_connect (app, "handle-local-options",
+                    G_CALLBACK (on_handle_local_options), NULL);
   g_signal_connect (app, "startup",  G_CALLBACK (on_startup),  NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);
