@@ -11,14 +11,17 @@
  *   - vpn.c     sabe lanzar/parar gpclient y nos avisa de lo que pasa.
  *   - auth.c    atiende las peticiones de login de gpclient (por D-Bus).
  *   - login.c   el diálogo con el navegador donde inicias sesión.
+ *   - tray.c    el icono de la barra superior y su menú.
  *   - main.c    (este) pinta la ventana y reacciona a esos avisos.
  */
 
 #include <adwaita.h>
+#include <glib-unix.h>
 
 #include "auth.h"
 #include "config.h"
 #include "login.h"
+#include "tray.h"
 #include "vpn.h"
 
 /* Todo lo de una VPN de la lista: sus datos, su conexión y su fila. */
@@ -43,6 +46,7 @@ static GtkTextBuffer *log_buffer;
 static GtkWidget     *log_view;
 static char          *startup_error; /* error al cargar, para el registro */
 static AdwDialog     *login_dialog;  /* el login abierto, o NULL */
+static gboolean       quitting;      /* saliendo: esperando a desconectar */
 
 static void open_edit_dialog (VpnRow *editing);
 
@@ -93,11 +97,28 @@ save_configs (void)
 /* Actualizar la interfaz                                           */
 /* ---------------------------------------------------------------- */
 
-/* Pone cada fila de acuerdo con el estado de su VPN. Se llama cada vez
- * que algo cambia: es el ÚNICO sitio que decide cómo se ve la lista. */
+/* Le pasa al icono de la barra el estado de todas las VPN. */
+static void
+refresh_tray (void)
+{
+  g_autofree TrayItem *items = g_new0 (TrayItem, rows->len);
+  for (guint i = 0; i < rows->len; i++) {
+    VpnRow *r = g_ptr_array_index (rows, i);
+    items[i].id = r->config->id;
+    items[i].name = r->config->name;
+    items[i].state = vpn_get_state (r->vpn);
+  }
+  tray_update (items, rows->len);
+}
+
+/* Pone cada fila (y el icono de la barra) de acuerdo con el estado de su
+ * VPN. Se llama cada vez que algo cambia: es el ÚNICO sitio que decide
+ * cómo se ve todo. */
 static void
 refresh_rows (void)
 {
+  refresh_tray ();
+
   if (stack == NULL)
     return;   /* la ventana aún no existe */
 
@@ -169,10 +190,37 @@ find_active_row (void)
   return NULL;
 }
 
+/*
+ * Salir de verdad. Si hay una VPN en uso, primero se desconecta y se
+ * ESPERA a que gpclient termine: al desconectar, gpclient deja las rutas
+ * y el DNS como estaban, y si la app se cerrase antes podría quedarse a
+ * medias. on_vpn_state hará el g_application_quit al acabar.
+ */
+static void
+request_quit (void)
+{
+  VpnRow *active = find_active_row ();
+
+  if (active == NULL) {
+    g_application_quit (g_application_get_default ());
+    return;
+  }
+
+  quitting = TRUE;
+  if (main_window != NULL)
+    gtk_widget_set_visible (GTK_WIDGET (main_window), FALSE);
+  vpn_disconnect (active->vpn);
+}
+
 static void
 on_vpn_state (Vpn *vpn, VpnState state, gpointer user_data)
 {
   (void) vpn; (void) state; (void) user_data;
+
+  if (quitting && find_active_row () == NULL) {
+    g_application_quit (g_application_get_default ());
+    return;
+  }
 
   /* Si la VPN se ha parado con el login abierto, ya no sirve: fuera. */
   if (login_dialog != NULL && find_active_row () == NULL)
@@ -614,6 +662,24 @@ build_list_page (void)
   return page;
 }
 
+/* Al pulsar la X de la ventana. Devolver TRUE significa "ya me encargo
+ * yo, no la destruyas": la ocultamos y la app sigue en la barra. */
+static gboolean
+on_close_request (GtkWindow *window, gpointer user_data)
+{
+  GApplication *app = user_data;
+
+  if (tray_is_available ()) {
+    gtk_widget_set_visible (GTK_WIDGET (window), FALSE);
+    return TRUE;
+  }
+
+  /* Sin icono en la barra no habría forma de volver: salimos. */
+  (void) app;
+  request_quit ();
+  return TRUE;
+}
+
 static void
 on_activate (GtkApplication *app, gpointer user_data)
 {
@@ -628,6 +694,8 @@ on_activate (GtkApplication *app, gpointer user_data)
   main_window = GTK_WINDOW (window);
   gtk_window_set_title (main_window, "VPN Portal");
   gtk_window_set_default_size (main_window, 520, 600);
+  g_signal_connect (window, "close-request",
+                    G_CALLBACK (on_close_request), app);
 
   /* Botón "+" en la barra de título. */
   GtkWidget *header = adw_header_bar_new ();
@@ -657,6 +725,62 @@ on_activate (GtkApplication *app, gpointer user_data)
 }
 
 /* ---------------------------------------------------------------- */
+/* Lo que se pide desde el menú de la barra                         */
+/* ---------------------------------------------------------------- */
+
+static void
+on_tray_toggle (const char *id, gpointer user_data)
+{
+  (void) user_data;
+  for (guint i = 0; i < rows->len; i++) {
+    VpnRow *r = g_ptr_array_index (rows, i);
+    if (!g_str_equal (r->config->id, id))
+      continue;
+    if (vpn_get_state (r->vpn) == VPN_DISCONNECTED)
+      vpn_connect (r->vpn);
+    else
+      vpn_disconnect (r->vpn);
+    return;
+  }
+}
+
+static void
+on_tray_show (gpointer user_data)
+{
+  /* "activate" es lo mismo que abrir la app desde el lanzador: si la
+   * ventana existe, on_activate la vuelve a mostrar. */
+  g_application_activate (G_APPLICATION (user_data));
+}
+
+static void
+on_tray_quit (gpointer user_data)
+{
+  (void) user_data;
+  request_quit ();
+}
+
+/* La acción "app.quit" (Ctrl+Q). */
+static void
+on_quit_action (GSimpleAction *action, GVariant *parameter, gpointer user_data)
+{
+  (void) action; (void) parameter; (void) user_data;
+  request_quit ();
+}
+
+/* Señales del sistema (SIGTERM al cerrar sesión, SIGINT con Ctrl+C en la
+ * terminal): salir igual de limpio. Si insisten, salir ya. */
+static gboolean
+on_unix_signal (gpointer user_data)
+{
+  (void) user_data;
+  if (quitting)
+    g_application_quit (g_application_get_default ());
+  else
+    request_quit ();
+  return G_SOURCE_CONTINUE;
+}
+
+/* ---------------------------------------------------------------- */
 /* Arranque y cierre                                                */
 /* ---------------------------------------------------------------- */
 
@@ -673,6 +797,30 @@ on_startup (GApplication *app, gpointer user_data)
 
   rows = g_ptr_array_new_with_free_func ((GDestroyNotify) vpn_row_free);
 
+  /* "hold": que la app siga viva aunque no tenga ninguna ventana
+   * visible (por defecto GTK sale al cerrar la última ventana). */
+  g_application_hold (app);
+
+  static const TrayCallbacks tray_callbacks = {
+    .toggle = on_tray_toggle,
+    .show = on_tray_show,
+    .quit = on_tray_quit,
+  };
+  tray_init (VPNPORTAL_APP_ID, &tray_callbacks, app);
+
+  g_unix_signal_add (SIGTERM, on_unix_signal, NULL);
+  g_unix_signal_add (SIGINT, on_unix_signal, NULL);
+
+  /* Ctrl+Q para salir del todo (desconectando). */
+  static const GActionEntry app_actions[] = {
+    { .name = "quit", .activate = on_quit_action },
+  };
+  g_action_map_add_action_entries (G_ACTION_MAP (app), app_actions,
+                                   G_N_ELEMENTS (app_actions), app);
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app), "app.quit",
+                                         (const char *[]) { "<Control>q",
+                                                            NULL });
+
   g_autoptr (GPtrArray) configs = vpn_config_load (&error);
   if (error != NULL)
     startup_error = g_strdup_printf ("No se pudo leer la configuración: %s",
@@ -683,6 +831,7 @@ on_startup (GApplication *app, gpointer user_data)
   g_ptr_array_set_free_func (configs, NULL);
   for (guint i = 0; i < configs->len; i++)
     vpn_row_new (g_ptr_array_index (configs, i));
+  refresh_tray ();
 
   /* Publicamos el servicio de login en el bus de sesión. */
   GDBusConnection *bus = g_application_get_dbus_connection (app);
@@ -705,6 +854,7 @@ on_shutdown (GApplication *app, gpointer user_data)
   log_view = NULL;
   log_buffer = NULL;
   auth_service_stop ();
+  tray_shutdown ();
   g_clear_pointer (&rows, g_ptr_array_unref);
   g_clear_pointer (&startup_error, g_free);
 }
