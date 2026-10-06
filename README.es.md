@@ -74,6 +74,17 @@ Pulsa **+** para añadir una VPN. La primera vez que conectas a un portal o
 gateway nuevo, GNOME te pide la contraseña de administrador una vez para
 aprobarlo; a partir de ahí, conectar nunca la vuelve a pedir.
 
+### Probarla sin VPN
+
+`tools/demo.sh` arranca una copia de demostración de la app con dos VPN
+inventadas que "conectan" sin red, sin login y sin GlobalProtect instalado
+(solo necesita las dependencias de compilación). Tu configuración real no se
+toca.
+
+```bash
+tools/demo.sh
+```
+
 ## Cómo funciona
 
 ```
