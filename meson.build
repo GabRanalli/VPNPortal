@@ -14,5 +14,6 @@ adw_dep = dependency('libadwaita-1', version : '>= 1.6')
 
 executable('gp-vpn',
   'src/main.c',
+  'src/config.c',
   'src/vpn.c',
   dependencies : [adw_dep])
