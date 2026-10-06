@@ -20,7 +20,10 @@ typedef struct {
 
 /* Qué hacer cuando se elige algo en el menú. */
 typedef struct {
-  void (*toggle) (const char *id, gpointer user_data);  /* conectar/desconectar */
+  /* conectar/desconectar/cambiar a la VPN 'id'; el token es como en show
+   * (puede hacer falta enseñar la ventana para pedir confirmación) */
+  void (*toggle) (const char *id, const char *activation_token,
+                  gpointer user_data);
   /* mostrar la ventana; 'activation_token' (o NULL) es el permiso de
    * GNOME para traerla al frente (ver tray.c) */
   void (*show)   (const char *activation_token, gpointer user_data);

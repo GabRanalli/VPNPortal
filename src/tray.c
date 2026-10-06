@@ -256,7 +256,7 @@ activate_entry (int id)
   g_autofree char *token = g_steal_pointer (&activation_token);
 
   switch (kind) {
-  case ENTRY_TOGGLE: callbacks.toggle (vpn_id, callbacks_data); break;
+  case ENTRY_TOGGLE: callbacks.toggle (vpn_id, token, callbacks_data); break;
   case ENTRY_SHOW:   callbacks.show (token, callbacks_data);    break;
   case ENTRY_QUIT:   callbacks.quit (callbacks_data);           break;
   default:                                                       break;
@@ -549,6 +549,13 @@ tray_update (const TrayItem *items, guint n_items)
   if (active != NULL) {
     g_autofree char *label = g_strdup_printf ("Desconectar %s", active->name);
     add_entry (ENTRY_TOGGLE, label, active->id);
+    /* Las demás siguen ahí: elegirlas cambia de VPN (la app pregunta). */
+    for (guint i = 0; i < n_items; i++) {
+      if (&items[i] == active)
+        continue;
+      g_autofree char *other = g_strdup_printf ("Cambiar a %s", items[i].name);
+      add_entry (ENTRY_TOGGLE, other, items[i].id);
+    }
   } else if (n_items == 0) {
     add_entry (ENTRY_TEXT, "Añade una VPN desde la ventana", NULL);
   } else {

@@ -47,6 +47,8 @@ static GtkWidget     *log_view;
 static char          *startup_error; /* error al cargar, para el registro */
 static AdwDialog     *login_dialog;  /* el login abierto, o NULL */
 static gboolean       quitting;      /* saliendo: esperando a desconectar */
+static VpnRow        *pending_switch; /* VPN a conectar en cuanto se
+                                       * desconecte la actual */
 
 static void open_edit_dialog (VpnRow *editing);
 
@@ -126,7 +128,7 @@ refresh_rows (void)
                                     rows->len > 0 ? "list" : "empty");
 
   /* gpclient solo permite una conexión a la vez: si alguna está en uso,
-   * las demás no pueden conectar. */
+   * el botón de las demás es "Cambiar" (desconecta una y conecta otra). */
   gboolean any_busy = FALSE;
   for (guint i = 0; i < rows->len; i++) {
     VpnRow *r = g_ptr_array_index (rows, i);
@@ -156,9 +158,9 @@ refresh_rows (void)
 
     switch (state) {
     case VPN_DISCONNECTED:
-      gtk_button_set_label (button, "Conectar");
+      gtk_button_set_label (button, any_busy ? "Cambiar" : "Conectar");
       gtk_widget_add_css_class (r->button, "suggested-action");
-      gtk_widget_set_sensitive (r->button, !any_busy);
+      gtk_widget_set_sensitive (r->button, TRUE);
       break;
     case VPN_CONNECTING:
     case VPN_CONNECTED:
@@ -226,7 +228,79 @@ on_vpn_state (Vpn *vpn, VpnState state, gpointer user_data)
   if (login_dialog != NULL && find_active_row () == NULL)
     adw_dialog_close (login_dialog);
 
+  /* Cambio de VPN: la anterior ya está desconectada del todo, ahora sí
+   * podemos lanzar la nueva (gpclient no admite dos a la vez). */
+  if (pending_switch != NULL && find_active_row () == NULL) {
+    VpnRow *next = g_steal_pointer (&pending_switch);
+    vpn_connect (next->vpn);
+  }
+
   refresh_rows ();
+}
+
+/* Cambiar a 'target' (ya confirmado): desconectar la actual y, cuando
+ * termine, on_vpn_state conecta 'target'. */
+static void
+switch_to (VpnRow *target)
+{
+  VpnRow *active = find_active_row ();
+
+  if (active == NULL) {   /* mientras preguntábamos, ya se desconectó */
+    vpn_connect (target->vpn);
+    return;
+  }
+  if (active == target)
+    return;
+
+  pending_switch = target;
+  g_autofree char *note = g_strdup_printf ("» Cambiando a %s: primero se "
+                                           "desconecta esta…",
+                                           target->config->name);
+  append_log (active->config->name, note);
+  vpn_disconnect (active->vpn);
+}
+
+static void
+on_switch_confirmed (AdwAlertDialog *alert, const char *response,
+                     gpointer user_data)
+{
+  (void) alert; (void) response;
+  switch_to (user_data);
+}
+
+/* Conectar 'target'. Si ya hay otra VPN en uso, primero se pregunta si
+ * se quiere cambiar (desconectando la actual). */
+static void
+request_connect (VpnRow *target)
+{
+  VpnRow *active = find_active_row ();
+
+  if (active == NULL) {
+    vpn_connect (target->vpn);
+    return;
+  }
+  if (active == target || main_window == NULL)
+    return;
+
+  gtk_window_present (main_window);
+
+  AdwDialog *alert = adw_alert_dialog_new (NULL, NULL);
+  adw_alert_dialog_format_heading (ADW_ALERT_DIALOG (alert),
+                                   "¿Cambiar a %s?", target->config->name);
+  adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
+                                "Se desconectará %s y después se conectará %s.",
+                                active->config->name, target->config->name);
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
+                                  "cancel", "Cancelar",
+                                  "switch", "Cambiar",
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "switch",
+                                            ADW_RESPONSE_SUGGESTED);
+  adw_alert_dialog_set_default_response (ADW_ALERT_DIALOG (alert), "switch");
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (alert), "cancel");
+  g_signal_connect (alert, "response::switch",
+                    G_CALLBACK (on_switch_confirmed), target);
+  adw_dialog_present (alert, GTK_WIDGET (main_window));
 }
 
 /* gpclient necesita un login (nos llega desde vpnportal-auth por D-Bus). */
@@ -280,7 +354,7 @@ on_button_clicked (GtkButton *button, gpointer user_data)
   VpnRow *r = user_data;
 
   if (vpn_get_state (r->vpn) == VPN_DISCONNECTED)
-    vpn_connect (r->vpn);
+    request_connect (r);
   else
     vpn_disconnect (r->vpn);
 }
@@ -452,6 +526,8 @@ on_delete_confirmed (AdwAlertDialog *alert, const char *response,
   adw_preferences_group_remove (ADW_PREFERENCES_GROUP (vpn_group), r->row);
   /* El array tiene vpn_row_free como función de liberar: quitarla del
    * array ya la libera. */
+  if (pending_switch == r)
+    pending_switch = NULL;
   g_ptr_array_remove (rows, r);
 
   save_configs ();
@@ -729,15 +805,21 @@ on_activate (GtkApplication *app, gpointer user_data)
 /* ---------------------------------------------------------------- */
 
 static void
-on_tray_toggle (const char *id, gpointer user_data)
+on_tray_toggle (const char *id, const char *activation_token,
+                gpointer user_data)
 {
   (void) user_data;
   for (guint i = 0; i < rows->len; i++) {
     VpnRow *r = g_ptr_array_index (rows, i);
     if (!g_str_equal (r->config->id, id))
       continue;
+
+    /* Por si hay que enseñar la ventana para preguntar (ver on_tray_show). */
+    if (main_window != NULL && activation_token != NULL)
+      gtk_window_set_startup_id (main_window, activation_token);
+
     if (vpn_get_state (r->vpn) == VPN_DISCONNECTED)
-      vpn_connect (r->vpn);
+      request_connect (r);
     else
       vpn_disconnect (r->vpn);
     return;
