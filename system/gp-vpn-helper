@@ -1,29 +1,101 @@
 #!/bin/bash
-# gp-vpn-helper — lanza gpclient con argumentos FIJOS. Se instala en
-# /usr/local/sbin (propiedad de root) y es lo ÚNICO que la app puede
-# ejecutar con sudo sin contraseña (ver gp-vpn.sudoers).
+# gp-vpn-helper — la ÚNICA puerta para lanzar gpclient como root.
 #
-# ¿Por qué no dar sudo sin contraseña a gpclient directamente? Porque
-# gpclient acepta "-s <script>" y ese script se ejecuta como root: sería
-# como dar root a cualquier programa que corra con tu usuario. Así, lo
-# único que se puede hacer sin contraseña es conectar estas dos VPN.
+# Se instala en /usr/local/sbin (propiedad de root) y tiene dos órdenes:
 #
-# Uso: gp-vpn-helper empresa|uni
+#   allow <host>...      Aprueba servidores. Se ejecuta con pkexec, así que
+#                        pide contraseña. La app lo usa la primera vez que
+#                        conectas a un portal/gateway nuevo.
+#
+#   connect <portal> [--gateway <host>] [--user <usuario>] [--hip]
+#                        Conecta. sudoers permite esto SIN contraseña, pero
+#                        solo a servidores aprobados con "allow".
+#
+# Todo lo que llega aquí se trata como si viniera de un atacante: solo se
+# aceptan las opciones de la lista y cada valor se valida. Las opciones
+# peligrosas de gpclient (-s script, --hip <script>, --cookie-cache <ruta>,
+# certificados...) son imposibles de pasar.
 
 set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+umask 022
+
+GPCLIENT=/usr/bin/gpclient
+ALLOWLIST=/etc/gp-vpn/allowed-hosts
+
+die() {
+  echo "gp-vpn-helper: $*" >&2
+  exit 2
+}
+
+# Las mismas reglas que vpn_config_host_is_valid / _user_is_valid en la app.
+# Ninguna permite empezar por "-", así no se puede colar una opción.
+valid_host() { [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]]; }
+valid_user() { [[ "$1" =~ ^[A-Za-z0-9._@+][A-Za-z0-9._@+-]{0,127}$ ]]; }
+
+# -x línea entera, -F texto literal (no regex), -i sin distinguir mayúsculas.
+is_approved() { [[ -f "$ALLOWLIST" ]] && grep -qixF -- "$1" "$ALLOWLIST"; }
+
+cmd_allow() {
+  [[ $# -ge 1 ]] || die "uso: allow <host>..."
+  # Primero se validan TODOS; si alguno falla, no se escribe nada.
+  local host
+  for host in "$@"; do
+    valid_host "$host" || die "host no válido: $host"
+  done
+
+  mkdir -p "$(dirname "$ALLOWLIST")"
+  for host in "$@"; do
+    host="${host,,}"   # a minúsculas
+    is_approved "$host" || echo "$host" >> "$ALLOWLIST"
+    echo "Aprobado: $host"
+  done
+}
+
+cmd_connect() {
+  [[ $# -ge 1 ]] || die "uso: connect <portal> [--gateway H] [--user U] [--hip]"
+  local portal="$1"
+  shift
+  valid_host "$portal" || die "portal no válido: $portal"
+  is_approved "$portal" || die "portal no aprobado: $portal"
+
+  local args=() gateway=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --gateway)
+        [[ $# -ge 2 ]] || die "falta el valor de --gateway"
+        valid_host "$2" || die "gateway no válida: $2"
+        is_approved "$2" || die "gateway no aprobada: $2"
+        gateway="$2"
+        args+=("--gateway=$2")
+        shift 2
+        ;;
+      --user)
+        [[ $# -ge 2 ]] || die "falta el valor de --user"
+        valid_user "$2" || die "usuario no válido: $2"
+        args+=("--user=$2")
+        shift 2
+        ;;
+      --hip)
+        args+=("--hip")
+        shift
+        ;;
+      *)
+        die "opción no permitida: $1"
+        ;;
+    esac
+  done
+
+  # Sin gateway concreta, gpclient preguntaría por teclado: que elija sola.
+  [[ -n "$gateway" ]] || args+=("--auto-gateway")
+
+  # "--opcion=valor" y el "--" antes del portal: así gpclient nunca puede
+  # confundir un valor con una opción.
+  exec "$GPCLIENT" connect "${args[@]}" -- "$portal"
+}
 
 case "${1:-}" in
-  empresa)
-    exec /usr/bin/gpclient connect vpn.empresa.example \
-      -g gw1.empresa.example \
-      -u usuario@empresa.example \
-      --hip
-    ;;
-  uni)
-    exec /usr/bin/gpclient connect vpn.uni.example --auto-gateway
-    ;;
-  *)
-    echo "uso: $0 empresa|uni" >&2
-    exit 2
-    ;;
+  connect) shift; cmd_connect "$@" ;;
+  allow)   shift; cmd_allow "$@" ;;
+  *)       die "uso: gp-vpn-helper connect|allow ..." ;;
 esac

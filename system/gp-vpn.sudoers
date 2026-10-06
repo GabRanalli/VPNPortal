@@ -1,5 +1,10 @@
-# /etc/sudoers.d/gp-vpn — permite a gabran lanzar el helper de la VPN
-# sin contraseña, y SOLO con los argumentos exactos "empresa" o "uni".
-# Comprobar SIEMPRE con "visudo -cf" antes de instalar: un sudoers roto
-# puede dejarte sin sudo.
-gabran ALL=(root) NOPASSWD: /usr/local/sbin/gp-vpn-helper empresa, /usr/local/sbin/gp-vpn-helper uni
+# /etc/sudoers.d/gp-vpn — los administradores (grupo sudo) pueden lanzar
+# "gp-vpn-helper connect ..." sin contraseña.
+#
+# El "*" admite cualquier argumento. Es seguro SOLO porque el helper valida
+# cada uno y únicamente conecta a servidores aprobados antes con contraseña
+# (/etc/gp-vpn/allowed-hosts). "allow" NO está aquí: siempre pide contraseña.
+#
+# En Fedora o Arch el grupo de administradores es %wheel en vez de %sudo.
+# Comprobar SIEMPRE con "visudo -cf" antes de instalar.
+%sudo ALL=(root) NOPASSWD: /usr/local/sbin/gp-vpn-helper connect *
