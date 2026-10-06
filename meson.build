@@ -9,6 +9,7 @@ project('gp-vpn', 'c',
 # dependency() busca cada librería con pkg-config (los ficheros .pc que
 # instalaron los paquetes -dev) y obtiene sus rutas de cabeceras y enlazado.
 adw_dep = dependency('libadwaita-1', version : '>= 1.6')
+webkit_dep = dependency('webkitgtk-6.0')
 gio_dep = dependency('gio-2.0')
 
 # La app.
@@ -16,8 +17,9 @@ executable('gp-vpn',
   'src/main.c',
   'src/auth.c',
   'src/config.c',
+  'src/login.c',
   'src/vpn.c',
-  dependencies : [adw_dep])
+  dependencies : [adw_dep, webkit_dep])
 
 # El sustituto de gpauth: un programa diminuto que solo necesita GIO.
 executable('gp-vpn-auth',

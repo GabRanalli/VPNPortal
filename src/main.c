@@ -9,17 +9,17 @@
  * Reparto del trabajo:
  *   - config.c  guarda y carga las VPN (~/.config/gp-vpn/vpns.ini).
  *   - vpn.c     sabe lanzar/parar gpclient y nos avisa de lo que pasa.
+ *   - auth.c    atiende las peticiones de login de gpclient (por D-Bus).
+ *   - login.c   el diálogo con el navegador donde inicias sesión.
  *   - main.c    (este) pinta la ventana y reacciona a esos avisos.
  */
 
 #include <adwaita.h>
 
+#include "auth.h"
 #include "config.h"
+#include "login.h"
 #include "vpn.h"
-
-#ifndef APP_ID
-#define APP_ID "es.gabran.GpVpn"
-#endif
 
 /* Todo lo de una VPN de la lista: sus datos, su conexión y su fila. */
 typedef struct {
@@ -42,6 +42,7 @@ static GtkWidget     *vpn_group;     /* la tarjeta con las filas */
 static GtkTextBuffer *log_buffer;
 static GtkWidget     *log_view;
 static char          *startup_error; /* error al cargar, para el registro */
+static AdwDialog     *login_dialog;  /* el login abierto, o NULL */
 
 static void open_edit_dialog (VpnRow *editing);
 
@@ -156,11 +157,59 @@ refresh_rows (void)
 /* Avisos que llegan desde vpn.c                                    */
 /* ---------------------------------------------------------------- */
 
+/* La fila cuya VPN está en uso (solo puede haber una), o NULL. */
+static VpnRow *
+find_active_row (void)
+{
+  for (guint i = 0; i < rows->len; i++) {
+    VpnRow *r = g_ptr_array_index (rows, i);
+    if (vpn_get_state (r->vpn) != VPN_DISCONNECTED)
+      return r;
+  }
+  return NULL;
+}
+
 static void
 on_vpn_state (Vpn *vpn, VpnState state, gpointer user_data)
 {
   (void) vpn; (void) state; (void) user_data;
+
+  /* Si la VPN se ha parado con el login abierto, ya no sirve: fuera. */
+  if (login_dialog != NULL && find_active_row () == NULL)
+    adw_dialog_close (login_dialog);
+
   refresh_rows ();
+}
+
+/* gpclient necesita un login (nos llega desde gp-vpn-auth por D-Bus). */
+static void
+on_auth_request (AuthRequest *request, gpointer user_data)
+{
+  (void) user_data;
+  VpnRow *active = find_active_row ();
+
+  /* Solo atendemos logins de una conexión que hayamos lanzado nosotros:
+   * así ningún otro programa puede abrir páginas en nuestra ventana. */
+  if (active == NULL || main_window == NULL) {
+    auth_request_fail (request, "No connection in progress in GP VPN");
+    return;
+  }
+  if (login_dialog != NULL) {
+    auth_request_fail (request, "Another login is already in progress");
+    return;
+  }
+
+  append_log (active->config->name,
+              auth_request_get_is_gateway (request)
+              ? "» Iniciando sesión en la gateway…"
+              : "» Iniciando sesión…");
+  gtk_window_present (main_window);
+  login_dialog = login_dialog_run (GTK_WIDGET (main_window),
+                                   active->config->name, request);
+  /* "Puntero débil": GTK lo pondrá a NULL solo cuando el diálogo se
+   * destruya, así nunca apunta a un diálogo que ya no existe. */
+  g_object_add_weak_pointer (G_OBJECT (login_dialog),
+                             (gpointer *) &login_dialog);
 }
 
 static void
@@ -619,7 +668,7 @@ on_activate (GtkApplication *app, gpointer user_data)
 static void
 on_startup (GApplication *app, gpointer user_data)
 {
-  (void) app; (void) user_data;
+  (void) user_data;
   g_autoptr (GError) error = NULL;
 
   rows = g_ptr_array_new_with_free_func ((GDestroyNotify) vpn_row_free);
@@ -634,6 +683,15 @@ on_startup (GApplication *app, gpointer user_data)
   g_ptr_array_set_free_func (configs, NULL);
   for (guint i = 0; i < configs->len; i++)
     vpn_row_new (g_ptr_array_index (configs, i));
+
+  /* Publicamos el servicio de login en el bus de sesión. */
+  GDBusConnection *bus = g_application_get_dbus_connection (app);
+  g_clear_error (&error);
+  if (bus == NULL)
+    startup_error = g_strdup ("Sin bus de sesión: el login no funcionará");
+  else if (!auth_service_start (bus, on_auth_request, NULL, &error))
+    startup_error = g_strdup_printf ("No se pudo publicar el login: %s",
+                                     error->message);
 }
 
 static void
@@ -646,6 +704,7 @@ on_shutdown (GApplication *app, gpointer user_data)
   vpn_group = NULL;
   log_view = NULL;
   log_buffer = NULL;
+  auth_service_stop ();
   g_clear_pointer (&rows, g_ptr_array_unref);
   g_clear_pointer (&startup_error, g_free);
 }
@@ -653,7 +712,7 @@ on_shutdown (GApplication *app, gpointer user_data)
 int
 main (int argc, char *argv[])
 {
-  AdwApplication *app = adw_application_new (APP_ID,
+  AdwApplication *app = adw_application_new (GP_VPN_APP_ID,
                                              G_APPLICATION_DEFAULT_FLAGS);
 
   g_signal_connect (app, "startup",  G_CALLBACK (on_startup),  NULL);
