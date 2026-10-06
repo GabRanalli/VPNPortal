@@ -1,0 +1,5 @@
+# /etc/sudoers.d/gp-vpn — permite a gabran lanzar el helper de la VPN
+# sin contraseña, y SOLO con los argumentos exactos "empresa" o "uni".
+# Comprobar SIEMPRE con "visudo -cf" antes de instalar: un sudoers roto
+# puede dejarte sin sudo.
+gabran ALL=(root) NOPASSWD: /usr/local/sbin/gp-vpn-helper empresa, /usr/local/sbin/gp-vpn-helper uni

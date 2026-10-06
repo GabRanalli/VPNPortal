@@ -1,0 +1,29 @@
+#!/bin/bash
+# gp-vpn-helper — lanza gpclient con argumentos FIJOS. Se instala en
+# /usr/local/sbin (propiedad de root) y es lo ÚNICO que la app puede
+# ejecutar con sudo sin contraseña (ver gp-vpn.sudoers).
+#
+# ¿Por qué no dar sudo sin contraseña a gpclient directamente? Porque
+# gpclient acepta "-s <script>" y ese script se ejecuta como root: sería
+# como dar root a cualquier programa que corra con tu usuario. Así, lo
+# único que se puede hacer sin contraseña es conectar estas dos VPN.
+#
+# Uso: gp-vpn-helper empresa|uni
+
+set -euo pipefail
+
+case "${1:-}" in
+  empresa)
+    exec /usr/bin/gpclient connect vpn.empresa.example \
+      -g gw1.empresa.example \
+      -u usuario@empresa.example \
+      --hip
+    ;;
+  uni)
+    exec /usr/bin/gpclient connect vpn.uni.example --auto-gateway
+    ;;
+  *)
+    echo "uso: $0 empresa|uni" >&2
+    exit 2
+    ;;
+esac
