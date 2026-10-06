@@ -43,11 +43,11 @@ get_network_session (void)
   static WebKitNetworkSession *session = NULL;
 
   if (session == NULL) {
-    /* ~/.local/share/gp-vpn/webkit y ~/.cache/gp-vpn/webkit */
+    /* ~/.local/share/vpnportal/webkit y ~/.cache/vpnportal/webkit */
     g_autofree char *data_dir = g_build_filename (g_get_user_data_dir (),
-                                                  "gp-vpn", "webkit", NULL);
+                                                  "vpnportal", "webkit", NULL);
     g_autofree char *cache_dir = g_build_filename (g_get_user_cache_dir (),
-                                                   "gp-vpn", "webkit", NULL);
+                                                   "vpnportal", "webkit", NULL);
     g_autofree char *cookies = g_build_filename (data_dir, "cookies.sqlite",
                                                  NULL);
     session = webkit_network_session_new (data_dir, cache_dir);

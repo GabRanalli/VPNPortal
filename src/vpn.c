@@ -9,9 +9,9 @@
  *
  * Conectar tiene dos pasos:
  *   1. Si el portal (o la gateway) no está aprobado todavía, se aprueba
- *      con "pkexec gp-vpn-helper allow ..." -> GNOME pide la contraseña.
+ *      con "pkexec vpnportal-helper allow ..." -> GNOME pide la contraseña.
  *      Solo pasa la primera vez para cada servidor.
- *   2. "sudo -n gp-vpn-helper connect ..." -> sin contraseña, pero el
+ *   2. "sudo -n vpnportal-helper connect ..." -> sin contraseña, pero el
  *      helper solo acepta servidores aprobados en el paso 1.
  */
 #include "vpn.h"
@@ -22,13 +22,13 @@
 /* Los #ifndef permiten sustituir estas rutas al compilar una versión
  * de pruebas (gcc -DHELPER_PATH=...), sin tocar el código. */
 #ifndef HELPER_PATH
-#define HELPER_PATH "/usr/local/sbin/gp-vpn-helper"
+#define HELPER_PATH "/usr/local/sbin/vpnportal-helper"
 #endif
 
 /* Lista de servidores aprobados. La escribe el helper (como root); la
  * app solo la lee para saber si hace falta pedir aprobación. */
 #ifndef ALLOWLIST_PATH
-#define ALLOWLIST_PATH "/etc/gp-vpn/allowed-hosts"
+#define ALLOWLIST_PATH "/etc/vpnportal/allowed-hosts"
 #endif
 
 /* Cuando gpclient conecta, aparece el interfaz de red del túnel. */
@@ -151,7 +151,7 @@ on_line_read (GObject *source, GAsyncResult *result, gpointer user_data)
   /* Si quien se queja es sudo, casi seguro falta la regla de sudoers. */
   if (g_str_has_prefix (line, "sudo: "))
     emit_note (vpn, "sudo pide contraseña: ¿está instalado "
-                    "system/gp-vpn.sudoers? (ver system/README.md)");
+                    "system/vpnportal.sudoers? (ver system/README.md)");
 
   read_next_line (vpn);   /* y a por la siguiente */
 }
@@ -226,7 +226,7 @@ start_connection (Vpn *vpn)
 
   /*
    * Montamos la orden pieza a pieza, por ejemplo:
-   *   sudo -n gp-vpn-helper connect vpn.empresa.example --user yo --hip
+   *   sudo -n vpnportal-helper connect vpn.empresa.example --user yo --hip
    *   -n = "non-interactive": si sudo necesitara contraseña, falla al
    *        momento en vez de quedarse esperando un teclado que no hay.
    * Cada dato va en su propio argumento (nunca se junta en un texto que

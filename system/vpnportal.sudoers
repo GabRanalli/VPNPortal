@@ -1,10 +1,10 @@
-# /etc/sudoers.d/gp-vpn — los administradores (grupo sudo) pueden lanzar
-# "gp-vpn-helper connect ..." sin contraseña.
+# /etc/sudoers.d/vpnportal — los administradores (grupo sudo) pueden lanzar
+# "vpnportal-helper connect ..." sin contraseña.
 #
 # El "*" admite cualquier argumento. Es seguro SOLO porque el helper valida
 # cada uno y únicamente conecta a servidores aprobados antes con contraseña
-# (/etc/gp-vpn/allowed-hosts). "allow" NO está aquí: siempre pide contraseña.
+# (/etc/vpnportal/allowed-hosts). "allow" NO está aquí: siempre pide contraseña.
 #
 # En Fedora o Arch el grupo de administradores es %wheel en vez de %sudo.
 # Comprobar SIEMPRE con "visudo -cf" antes de instalar.
-%sudo ALL=(root) NOPASSWD: /usr/local/sbin/gp-vpn-helper connect *
+%sudo ALL=(root) NOPASSWD: /usr/local/sbin/vpnportal-helper connect *

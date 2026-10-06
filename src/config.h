@@ -1,7 +1,7 @@
 /*
  * config.h — las VPN que ha añadido el usuario y cómo se guardan.
  *
- * Se guardan en ~/.config/gp-vpn/vpns.ini, un fichero de texto que se
+ * Se guardan en ~/.config/vpnportal/vpns.ini, un fichero de texto que se
  * puede leer (y editar) a mano:
  *
  *   [3f2a9c1e-...]          <- identificador interno de cada VPN
@@ -27,7 +27,7 @@ typedef struct {
 VpnConfig *vpn_config_new           (void);
 void       vpn_config_free          (VpnConfig *config);
 
-/* Las mismas reglas que comprueba el helper (system/gp-vpn-helper). */
+/* Las mismas reglas que comprueba el helper (system/vpnportal-helper). */
 gboolean   vpn_config_host_is_valid (const char *host);
 gboolean   vpn_config_user_is_valid (const char *user);
 

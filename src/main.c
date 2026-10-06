@@ -1,5 +1,5 @@
 /*
- * gp-vpn — la ventana: lista de VPN del usuario, diálogo para añadir /
+ * vpnportal — la ventana: lista de VPN del usuario, diálogo para añadir /
  * editar / borrar, y registro con la salida de gpclient.
  *
  * Recordatorio: una app GTK vive en un BUCLE DE EVENTOS. main() prepara
@@ -7,7 +7,7 @@
  * funciones (CALLBACKS) cuando ocurre algo (SEÑALES).
  *
  * Reparto del trabajo:
- *   - config.c  guarda y carga las VPN (~/.config/gp-vpn/vpns.ini).
+ *   - config.c  guarda y carga las VPN (~/.config/vpnportal/vpns.ini).
  *   - vpn.c     sabe lanzar/parar gpclient y nos avisa de lo que pasa.
  *   - auth.c    atiende las peticiones de login de gpclient (por D-Bus).
  *   - login.c   el diálogo con el navegador donde inicias sesión.
@@ -181,7 +181,7 @@ on_vpn_state (Vpn *vpn, VpnState state, gpointer user_data)
   refresh_rows ();
 }
 
-/* gpclient necesita un login (nos llega desde gp-vpn-auth por D-Bus). */
+/* gpclient necesita un login (nos llega desde vpnportal-auth por D-Bus). */
 static void
 on_auth_request (AuthRequest *request, gpointer user_data)
 {
@@ -191,7 +191,7 @@ on_auth_request (AuthRequest *request, gpointer user_data)
   /* Solo atendemos logins de una conexión que hayamos lanzado nosotros:
    * así ningún otro programa puede abrir páginas en nuestra ventana. */
   if (active == NULL || main_window == NULL) {
-    auth_request_fail (request, "No connection in progress in GP VPN");
+    auth_request_fail (request, "No connection in progress in VPN Portal");
     return;
   }
   if (login_dialog != NULL) {
@@ -626,7 +626,7 @@ on_activate (GtkApplication *app, gpointer user_data)
 
   GtkWidget *window = adw_application_window_new (app);
   main_window = GTK_WINDOW (window);
-  gtk_window_set_title (main_window, "GP VPN");
+  gtk_window_set_title (main_window, "VPN Portal");
   gtk_window_set_default_size (main_window, 520, 600);
 
   /* Botón "+" en la barra de título. */
@@ -712,7 +712,7 @@ on_shutdown (GApplication *app, gpointer user_data)
 int
 main (int argc, char *argv[])
 {
-  AdwApplication *app = adw_application_new (GP_VPN_APP_ID,
+  AdwApplication *app = adw_application_new (VPNPORTAL_APP_ID,
                                              G_APPLICATION_DEFAULT_FLAGS);
 
   g_signal_connect (app, "startup",  G_CALLBACK (on_startup),  NULL);

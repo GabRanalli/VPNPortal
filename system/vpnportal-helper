@@ -1,5 +1,5 @@
 #!/bin/bash
-# gp-vpn-helper — la ÚNICA puerta para lanzar gpclient como root.
+# vpnportal-helper — la ÚNICA puerta para lanzar gpclient como root.
 #
 # Se instala en /usr/local/sbin (propiedad de root) y tiene dos órdenes:
 #
@@ -21,12 +21,12 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 umask 022
 
 GPCLIENT=/usr/bin/gpclient
-ALLOWLIST=/etc/gp-vpn/allowed-hosts
+ALLOWLIST=/etc/vpnportal/allowed-hosts
 # Sustituto de gpauth que muestra el login dentro de la app.
-AUTH_BINARY=/usr/local/libexec/gp-vpn-auth
+AUTH_BINARY=/usr/local/libexec/vpnportal-auth
 
 die() {
-  echo "gp-vpn-helper: $*" >&2
+  echo "vpnportal-helper: $*" >&2
   exit 2
 }
 
@@ -107,5 +107,5 @@ cmd_connect() {
 case "${1:-}" in
   connect) shift; cmd_connect "$@" ;;
   allow)   shift; cmd_allow "$@" ;;
-  *)       die "uso: gp-vpn-helper connect|allow ..." ;;
+  *)       die "uso: vpnportal-helper connect|allow ..." ;;
 esac

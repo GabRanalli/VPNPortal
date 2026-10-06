@@ -3,13 +3,13 @@
  *
  * Cómo encaja todo:
  *
- *   gpclient (root) ──lanza──> gp-vpn-auth (tu usuario)
+ *   gpclient (root) ──lanza──> vpnportal-auth (tu usuario)
  *                                  │ D-Bus: Login(args)
  *                                  v
  *                              la app (este módulo) ──> diálogo de login
  *                                  │ devuelve el JSON
  *                                  v
- *   gpclient <──── stdout ──── gp-vpn-auth
+ *   gpclient <──── stdout ──── vpnportal-auth
  *
  * gpclient cree que está hablando con gpauth (su programa de login): le
  * pasamos los mismos argumentos y le devolvemos el mismo JSON.
@@ -19,12 +19,12 @@
 #include <gio/gio.h>
 
 /* El nombre de la app en el bus de sesión (GApplication lo registra
- * solo) y dónde está nuestro objeto de login. gp-vpn-auth usa lo mismo. */
-#ifndef GP_VPN_APP_ID
-#define GP_VPN_APP_ID "es.gabran.GpVpn"
+ * solo) y dónde está nuestro objeto de login. vpnportal-auth usa lo mismo. */
+#ifndef VPNPORTAL_APP_ID
+#define VPNPORTAL_APP_ID "io.github.GabRanalli.VPNPortal"
 #endif
-#define AUTH_OBJECT_PATH "/es/gabran/GpVpn/Auth"
-#define AUTH_INTERFACE   "es.gabran.GpVpn.Auth"
+#define AUTH_OBJECT_PATH "/io/github/GabRanalli/VPNPortal/Auth"
+#define AUTH_INTERFACE   "io.github.GabRanalli.VPNPortal.Auth"
 
 /* Lo que se consigue al iniciar sesión (lo que gpauth imprimiría). */
 typedef struct {

@@ -2,7 +2,7 @@
 # librerías. Él genera las órdenes reales (para ninja), así no escribimos
 # a mano las líneas de gcc con todos los -I y -l de GTK.
 
-project('gp-vpn', 'c',
+project('vpnportal', 'c',
   version : '0.1.0',
   default_options : ['c_std=c11', 'warning_level=2'])
 
@@ -13,7 +13,7 @@ webkit_dep = dependency('webkitgtk-6.0')
 gio_dep = dependency('gio-2.0')
 
 # La app.
-executable('gp-vpn',
+executable('vpnportal',
   'src/main.c',
   'src/auth.c',
   'src/config.c',
@@ -22,6 +22,6 @@ executable('gp-vpn',
   dependencies : [adw_dep, webkit_dep])
 
 # El sustituto de gpauth: un programa diminuto que solo necesita GIO.
-executable('gp-vpn-auth',
-  'src/gp-vpn-auth.c',
+executable('vpnportal-auth',
+  'src/vpnportal-auth.c',
   dependencies : [gio_dep])

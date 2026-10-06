@@ -1,5 +1,5 @@
 /*
- * config.c — leer y escribir ~/.config/gp-vpn/vpns.ini con GKeyFile,
+ * config.c — leer y escribir ~/.config/vpnportal/vpns.ini con GKeyFile,
  * el lector de ficheros "estilo .ini" que ya trae GLib.
  */
 #include "config.h"
@@ -12,7 +12,7 @@ static char *
 config_path (void)
 {
   /* g_get_user_config_dir() es ~/.config (o lo que diga $XDG_CONFIG_HOME). */
-  return g_build_filename (g_get_user_config_dir (), "gp-vpn", "vpns.ini",
+  return g_build_filename (g_get_user_config_dir (), "vpnportal", "vpns.ini",
                            NULL);
 }
 

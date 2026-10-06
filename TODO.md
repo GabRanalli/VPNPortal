@@ -15,7 +15,7 @@
 - [ ] Opción para olvidar la sesión de login guardada (como `gpauth --clean`).
 
 ## Para publicar
-- [ ] Cambiar el id de la app a io.github.<usuario>.GpVpn.
+- [x] Cambiar el id de la app a io.github.GabRanalli.VPNPortal.
 - [ ] README con capturas, requisitos e instalación.
 - [ ] Elegir licencia.
 - [ ] Instalación con `meson install` (binario, .desktop, icono, helper).
