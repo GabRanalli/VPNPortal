@@ -42,13 +42,27 @@ static GPtrArray     *rows;          /* VpnRow*, en el orden de la lista */
 static GtkWindow     *main_window;
 static GtkWidget     *stack;         /* página "empty" o "list" */
 static GtkWidget     *vpn_group;     /* la tarjeta con las filas */
-static GtkTextBuffer *log_buffer;
-static GtkWidget     *log_view;
+static GtkTextBuffer *log_buffer;    /* el registro completo (texto) */
+static GtkWidget     *log_view;      /* su vista, si el diálogo está abierto */
 static char          *startup_error; /* error al cargar, para el registro */
 static AdwDialog     *login_dialog;  /* el login abierto, o NULL */
 static gboolean       quitting;      /* saliendo: esperando a desconectar */
 static VpnRow        *pending_switch; /* VPN a conectar en cuanto se
                                        * desconecte la actual */
+
+/* El resumen de "Actividad": los pasos del último intento de conexión. */
+typedef struct {
+  VpnStepKind  kind;
+  char        *text;
+  char        *time;   /* "12:41:03" */
+} Step;
+
+#define MAX_STEPS 10
+
+static GPtrArray     *steps;          /* de Step*, el más antiguo primero */
+static Vpn           *steps_vpn;      /* la VPN de esos pasos */
+static GtkWidget     *activity_group;
+static GtkWidget     *activity_list;  /* GtkListBox con un paso por fila */
 
 static void open_edit_dialog (VpnRow *editing);
 
@@ -69,9 +83,104 @@ append_log (const char *origin, const char *line)
   gtk_text_buffer_insert (log_buffer, &end, text, -1);
 
   /* Un "mark" es una posición del texto que se mantiene aunque el texto
-   * cambie. Usamos uno al final para que la vista lo siga. */
-  GtkTextMark *mark = gtk_text_buffer_get_mark (log_buffer, "end");
-  gtk_text_view_scroll_mark_onscreen (GTK_TEXT_VIEW (log_view), mark);
+   * cambie. Usamos uno al final para que la vista (si está abierta) lo
+   * siga. */
+  if (log_view != NULL) {
+    GtkTextMark *mark = gtk_text_buffer_get_mark (log_buffer, "end");
+    gtk_text_view_scroll_mark_onscreen (GTK_TEXT_VIEW (log_view), mark);
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Actividad (el resumen)                                           */
+/* ---------------------------------------------------------------- */
+
+static void
+step_free (Step *step)
+{
+  g_free (step->text);
+  g_free (step->time);
+  g_free (step);
+}
+
+/* Rehace la lista de pasos. Son pocos, así que la rehacemos entera. */
+static void
+refresh_activity (void)
+{
+  if (activity_list == NULL)
+    return;
+
+  gtk_list_box_remove_all (GTK_LIST_BOX (activity_list));
+
+  /* El título de una tarjeta admite "markup" (<b>, &amp;...): el nombre
+   * de la VPN hay que escaparlo, o un "&" lo rompería. */
+  g_autofree char *title = NULL;
+  if (steps_vpn != NULL) {
+    g_autofree char *name =
+      g_markup_escape_text (vpn_get_config (steps_vpn)->name, -1);
+    title = g_strdup_printf ("Actividad · %s", name);
+  }
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (activity_group),
+                                   title != NULL ? title : "Actividad");
+
+  gboolean busy = steps_vpn != NULL &&
+                  vpn_get_state (steps_vpn) != VPN_DISCONNECTED;
+
+  for (guint i = 0; i < steps->len; i++) {
+    Step *step = g_ptr_array_index (steps, i);
+    gboolean last = i == steps->len - 1;
+
+    GtkWidget *row = adw_action_row_new ();
+    adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), step->text);
+    adw_action_row_set_subtitle (ADW_ACTION_ROW (row), step->time);
+
+    /* El icono: error, "en curso" (ruedecita) o hecho (✓). */
+    GtkWidget *icon;
+    if (step->kind == VPN_STEP_ERROR) {
+      icon = gtk_image_new_from_icon_name ("dialog-error-symbolic");
+      gtk_widget_add_css_class (icon, "error");
+    } else if (last && busy && step->kind != VPN_STEP_DONE) {
+      icon = adw_spinner_new ();
+    } else {
+      icon = gtk_image_new_from_icon_name ("object-select-symbolic");
+      gtk_widget_add_css_class (icon, "dim-label");
+    }
+    adw_action_row_add_prefix (ADW_ACTION_ROW (row), icon);
+    gtk_list_box_append (GTK_LIST_BOX (activity_list), row);
+  }
+}
+
+/* Llega un paso nuevo desde vpn.c. */
+static void
+on_vpn_step (Vpn *vpn, VpnStepKind kind, const char *text, gpointer user_data)
+{
+  (void) user_data;
+
+  /* Un intento nuevo (o de otra VPN): lista limpia. */
+  if (kind == VPN_STEP_BEGIN || vpn != steps_vpn) {
+    g_ptr_array_set_size (steps, 0);
+    steps_vpn = vpn;
+  }
+
+  /* gpclient a veces repite un mensaje: no lo contamos dos veces. */
+  if (steps->len > 0) {
+    Step *previous = g_ptr_array_index (steps, steps->len - 1);
+    if (g_str_equal (previous->text, text))
+      return;
+  }
+
+  Step *step = g_new0 (Step, 1);
+  step->kind = kind;
+  step->text = g_strdup (text);
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  step->time = g_date_time_format (now, "%H:%M:%S");
+  g_ptr_array_add (steps, step);
+
+  if (steps->len > MAX_STEPS)
+    g_ptr_array_remove_index (steps, 0);   /* fuera el más antiguo */
+
+  refresh_activity ();
 }
 
 /* ---------------------------------------------------------------- */
@@ -120,6 +229,7 @@ static void
 refresh_rows (void)
 {
   refresh_tray ();
+  refresh_activity ();   /* la ruedecita depende del estado */
 
   if (stack == NULL)
     return;   /* la ventana aún no existe */
@@ -375,6 +485,8 @@ static void
 vpn_row_build (VpnRow *r)
 {
   r->row = adw_action_row_new ();
+  /* El título será el nombre de la VPN, texto tal cual (sin "markup"). */
+  adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (r->row), FALSE);
   adw_action_row_add_prefix (ADW_ACTION_ROW (r->row),
                              gtk_image_new_from_icon_name ("network-vpn-symbolic"));
 
@@ -407,7 +519,7 @@ vpn_row_new (VpnConfig *config)
 {
   VpnRow *r = g_new0 (VpnRow, 1);
   r->config = config;
-  r->vpn = vpn_new (config, on_vpn_state, on_vpn_line, NULL);
+  r->vpn = vpn_new (config, on_vpn_state, on_vpn_line, on_vpn_step, NULL);
   g_ptr_array_add (rows, r);
 
   if (vpn_group != NULL)   /* si la ventana ya existe, se ve al momento */
@@ -686,40 +798,115 @@ build_empty_page (void)
   return status;
 }
 
-static GtkWidget *
-build_log_group (void)
+/* "Copiar" en el diálogo del registro: todo el texto al portapapeles. */
+static void
+on_copy_log_clicked (GtkButton *button, gpointer user_data)
 {
-  GtkWidget *group = adw_preferences_group_new ();
-  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group),
-                                   "Registro");
+  AdwToastOverlay *overlay = user_data;
+  GtkTextIter start, end;
 
-  /* GtkTextView muestra un GtkTextBuffer: la vista y el texto van por
-   * separado (el mismo texto podría verse en dos sitios a la vez). */
-  log_view = gtk_text_view_new ();
-  gtk_text_view_set_editable (GTK_TEXT_VIEW (log_view), FALSE);
-  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW (log_view), FALSE);
-  gtk_text_view_set_monospace (GTK_TEXT_VIEW (log_view), TRUE);
-  gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (log_view), GTK_WRAP_WORD_CHAR);
-  gtk_text_view_set_left_margin (GTK_TEXT_VIEW (log_view), 8);
-  gtk_text_view_set_top_margin (GTK_TEXT_VIEW (log_view), 8);
-  log_buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (log_view));
+  gtk_text_buffer_get_bounds (log_buffer, &start, &end);
+  g_autofree char *text = gtk_text_buffer_get_text (log_buffer, &start, &end,
+                                                    FALSE);
+  gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (button)), text);
 
-  GtkTextIter end;
-  gtk_text_buffer_get_end_iter (log_buffer, &end);
-  gtk_text_buffer_create_mark (log_buffer, "end", &end, FALSE);
-
-  /* La vista de texto va dentro de una ventana con barra de scroll. */
-  GtkWidget *scroller = gtk_scrolled_window_new ();
-  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroller), log_view);
-  gtk_scrolled_window_set_min_content_height (GTK_SCROLLED_WINDOW (scroller),
-                                              220);
-  gtk_widget_add_css_class (scroller, "card");   /* bordes redondeados */
-
-  adw_preferences_group_add (ADW_PREFERENCES_GROUP (group), scroller);
-  return group;
+  /* Un "toast": el mensajito que aparece abajo unos segundos. */
+  adw_toast_overlay_add_toast (overlay, adw_toast_new ("Registro copiado"));
 }
 
-/* La lista de VPN + el registro. */
+/* El registro completo, en un diálogo aparte. */
+static void
+on_show_log_clicked (GtkButton *button, gpointer user_data)
+{
+  (void) button; (void) user_data;
+
+  /* GtkTextView muestra un GtkTextBuffer: la vista y el texto van por
+   * separado. El texto vive toda la app; la vista, lo que dure el
+   * diálogo. */
+  GtkWidget *view = gtk_text_view_new_with_buffer (log_buffer);
+  gtk_text_view_set_editable (GTK_TEXT_VIEW (view), FALSE);
+  gtk_text_view_set_cursor_visible (GTK_TEXT_VIEW (view), FALSE);
+  gtk_text_view_set_monospace (GTK_TEXT_VIEW (view), TRUE);
+  gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (view), GTK_WRAP_WORD_CHAR);
+  gtk_text_view_set_left_margin (GTK_TEXT_VIEW (view), 12);
+  gtk_text_view_set_right_margin (GTK_TEXT_VIEW (view), 12);
+  gtk_text_view_set_top_margin (GTK_TEXT_VIEW (view), 12);
+  gtk_text_view_set_bottom_margin (GTK_TEXT_VIEW (view), 12);
+
+  GtkWidget *scroller = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroller), view);
+  gtk_widget_set_vexpand (scroller, TRUE);
+
+  GtkWidget *overlay = adw_toast_overlay_new ();
+  adw_toast_overlay_set_child (ADW_TOAST_OVERLAY (overlay), scroller);
+
+  GtkWidget *copy = gtk_button_new_from_icon_name ("edit-copy-symbolic");
+  gtk_widget_set_tooltip_text (copy, "Copiar todo");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (copy),
+                                  GTK_ACCESSIBLE_PROPERTY_LABEL, "Copiar todo",
+                                  -1);
+  g_signal_connect (copy, "clicked", G_CALLBACK (on_copy_log_clicked), overlay);
+
+  GtkWidget *header = adw_header_bar_new ();
+  adw_header_bar_pack_start (ADW_HEADER_BAR (header), copy);
+
+  GtkWidget *toolbar_view = adw_toolbar_view_new ();
+  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar_view), header);
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), overlay);
+
+  AdwDialog *dialog = adw_dialog_new ();
+  adw_dialog_set_title (dialog, "Registro completo");
+  adw_dialog_set_content_width (dialog, 760);
+  adw_dialog_set_content_height (dialog, 520);
+  adw_dialog_set_child (dialog, toolbar_view);
+
+  /* Mientras el diálogo exista, append_log hará que la vista siga el
+   * final; el puntero débil se pone a NULL solo al cerrarlo. */
+  log_view = view;
+  g_object_add_weak_pointer (G_OBJECT (view), (gpointer *) &log_view);
+
+  adw_dialog_present (dialog, GTK_WIDGET (main_window));
+  gtk_text_view_scroll_to_mark (GTK_TEXT_VIEW (view),
+                                gtk_text_buffer_get_mark (log_buffer, "end"),
+                                0, FALSE, 0, 0);
+}
+
+/* La tarjeta "Actividad": los pasos + el botón del registro completo. */
+static GtkWidget *
+build_activity_group (void)
+{
+  activity_group = adw_preferences_group_new ();
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (activity_group),
+                                   "Actividad");
+
+  GtkWidget *show_log = gtk_button_new_with_label ("Registro completo");
+  gtk_widget_add_css_class (show_log, "flat");
+  gtk_widget_set_valign (show_log, GTK_ALIGN_CENTER);
+  g_signal_connect (show_log, "clicked", G_CALLBACK (on_show_log_clicked),
+                    NULL);
+  adw_preferences_group_set_header_suffix (ADW_PREFERENCES_GROUP (activity_group),
+                                           show_log);
+
+  /* "boxed-list": el estilo de lista con bordes redondeados de GNOME. */
+  activity_list = gtk_list_box_new ();
+  gtk_list_box_set_selection_mode (GTK_LIST_BOX (activity_list),
+                                   GTK_SELECTION_NONE);
+  gtk_widget_add_css_class (activity_list, "boxed-list");
+
+  /* Lo que se ve cuando la lista está vacía. */
+  GtkWidget *placeholder = gtk_label_new ("Aún no hay actividad");
+  gtk_widget_add_css_class (placeholder, "dim-label");
+  gtk_widget_set_margin_top (placeholder, 18);
+  gtk_widget_set_margin_bottom (placeholder, 18);
+  gtk_list_box_set_placeholder (GTK_LIST_BOX (activity_list), placeholder);
+
+  adw_preferences_group_add (ADW_PREFERENCES_GROUP (activity_group),
+                             activity_list);
+  refresh_activity ();
+  return activity_group;
+}
+
+/* La lista de VPN + la actividad. */
 static GtkWidget *
 build_list_page (void)
 {
@@ -734,7 +921,7 @@ build_list_page (void)
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
                             ADW_PREFERENCES_GROUP (vpn_group));
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
-                            ADW_PREFERENCES_GROUP (build_log_group ()));
+                            ADW_PREFERENCES_GROUP (build_activity_group ()));
   return page;
 }
 
@@ -884,6 +1071,14 @@ on_startup (GApplication *app, gpointer user_data)
   g_autoptr (GError) error = NULL;
 
   rows = g_ptr_array_new_with_free_func ((GDestroyNotify) vpn_row_free);
+  steps = g_ptr_array_new_with_free_func ((GDestroyNotify) step_free);
+
+  /* El texto del registro completo vive toda la app (aunque la ventana o
+   * el diálogo no existan), con un "mark" al final para poder seguirlo. */
+  log_buffer = gtk_text_buffer_new (NULL);
+  GtkTextIter end;
+  gtk_text_buffer_get_end_iter (log_buffer, &end);
+  gtk_text_buffer_create_mark (log_buffer, "end", &end, FALSE);
 
   /* "hold": que la app siga viva aunque no tenga ninguna ventana
    * visible (por defecto GTK sale al cerrar la última ventana). */
@@ -940,10 +1135,14 @@ on_shutdown (GApplication *app, gpointer user_data)
   stack = NULL;
   vpn_group = NULL;
   log_view = NULL;
-  log_buffer = NULL;
+  activity_group = NULL;
+  activity_list = NULL;
   auth_service_stop ();
   tray_shutdown ();
   g_clear_pointer (&rows, g_ptr_array_unref);
+  g_clear_pointer (&steps, g_ptr_array_unref);
+  steps_vpn = NULL;
+  g_clear_object (&log_buffer);
   g_clear_pointer (&startup_error, g_free);
 }
 

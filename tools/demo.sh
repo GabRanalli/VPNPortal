@@ -25,16 +25,24 @@ rm -rf "$DEMO"
 mkdir -p "$DEMO/bin" "$DEMO/etc"
 
 # --- gpclient de mentira: imita los pasos y crea un "túnel" (un fichero) ---
+# Escribe las mismas frases clave que el gpclient real ("Portal prelogin",
+# "Connected to VPN"...), que son las que la app usa para la "Actividad".
 cat > "$DEMO/gpclient" <<EOF
 #!/bin/bash
 TUN="$DEMO/tun0"
 portal="\${!#}"   # el último argumento es el portal
-trap 'echo "Desconectando de \$portal…"; sleep 1; rm -f "\$TUN"; echo "Desconectada."; exit 0' INT TERM
-echo "gpclient (demo) \$*"
-echo "Conectando al portal \$portal…"; sleep 1
-echo "Inicio de sesión correcto (demo, sin login de verdad)"; sleep 1
-echo "Conectando a la gateway…"; sleep 1
-touch "\$TUN"; echo "Connected to VPN (demo)"
+log() { echo "[demo \$1 gpclient] \$2"; }
+trap 'log INFO "Disconnecting from \$portal"; sleep 1; rm -f "\$TUN"; exit 0' INT TERM
+log INFO "gpclient (demo) \$*"
+log INFO "Portal prelogin: \$portal"; sleep 1
+if [[ "\$portal" == *falla* ]]; then
+  log ERROR "Failed to connect portal: demo error (this VPN always fails)"
+  exit 1
+fi
+log INFO "SAML auth launch (demo: no real login)"; sleep 1
+log INFO "Retrieve the portal config"; sleep 1
+log INFO "Perform gateway login"; sleep 1
+touch "\$TUN"; log INFO "Connected to VPN (demo)"
 while true; do sleep 0.5; done
 EOF
 
@@ -62,6 +70,13 @@ hip=true
 [demo-uni]
 name=Demo Uni
 portal=vpn.uni.example
+gateway=
+user=
+hip=false
+
+[demo-falla]
+name=Demo Falla
+portal=vpn.falla.example
 gateway=
 user=
 hip=false

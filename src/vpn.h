@@ -25,6 +25,16 @@ typedef enum {
  */
 typedef struct _Vpn Vpn;
 
+/* Los "pasos" son el resumen para personas de lo que va pasando
+ * ("Contactando con el portal…", "Conectada"...). BEGIN marca el primer
+ * paso de un intento de conexión nuevo (la interfaz empieza la lista). */
+typedef enum {
+  VPN_STEP_BEGIN,
+  VPN_STEP_PROGRESS,
+  VPN_STEP_DONE,
+  VPN_STEP_ERROR,
+} VpnStepKind;
+
 /*
  * Punteros a función: así el módulo avisa a quien lo usa (la interfaz)
  * sin conocerlo. "Cuando cambie el estado, llama a ESTA función tuya."
@@ -32,11 +42,14 @@ typedef struct _Vpn Vpn;
  */
 typedef void (*VpnStateFunc) (Vpn *vpn, VpnState state, gpointer user_data);
 typedef void (*VpnLineFunc)  (Vpn *vpn, const char *line, gpointer user_data);
+typedef void (*VpnStepFunc)  (Vpn *vpn, VpnStepKind kind, const char *text,
+                              gpointer user_data);
 
 /* 'config' no se copia: debe vivir al menos tanto como el Vpn. */
 Vpn             *vpn_new             (const VpnConfig *config,
                                       VpnStateFunc     on_state,
                                       VpnLineFunc      on_line,
+                                      VpnStepFunc      on_step,
                                       gpointer         user_data);
 void             vpn_free            (Vpn *vpn);
 

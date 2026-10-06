@@ -15,6 +15,9 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
   iniciada, el siguiente login pasa solo sin enseñar nada.
 - **Icono en la barra superior** con el estado actual y un menú para conectar
   o desconectar. Al cerrar la ventana, la app sigue en segundo plano.
+- **Actividad clara**: los pasos de cada conexión en lenguaje normal
+  ("Contactando con el portal…", "Conectada"), con el registro completo de
+  `gpclient` a un clic (y un botón para copiarlo).
 - **Conectar sin contraseña**, sin regalar root (ver [Seguridad](#seguridad)).
 
 > **Estado:** en sus primeras versiones, pero ya sirve para el día a día. La
@@ -117,8 +120,7 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Próximamente
 
-Un registro más sencillo con un botón de "ver detalles", temas, interfaz en
-inglés y arrancar sola al iniciar sesión. Ver [TODO.md](TODO.md).
+Temas, interfaz en inglés y arrancar sola al iniciar sesión. Ver [TODO.md](TODO.md).
 
 ## Licencia
 
