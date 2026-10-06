@@ -2,8 +2,8 @@
  * tray.h — el icono de la barra superior y su menú.
  *
  * En GNOME el icono lo pinta la extensión "AppIndicator" (en Ubuntu viene
- * activada). La app solo publica por D-Bus el icono, el título y el menú;
- * de eso se encarga libayatana-appindicator-glib.
+ * activada). La app solo publica por D-Bus el icono, el título y el menú
+ * (ver tray.c).
  */
 #pragma once
 

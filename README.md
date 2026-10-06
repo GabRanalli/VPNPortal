@@ -25,11 +25,10 @@ of [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnec
 
 - [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect)
   2.x installed (`gpclient` in `/usr/bin`).
-- GTK 4, libadwaita ≥ 1.6, WebKitGTK 6.0 and libayatana-appindicator-glib.
-  On Ubuntu/Debian:
+- GTK 4, libadwaita ≥ 1.6 and WebKitGTK 6.0. On Ubuntu/Debian:
 
   ```bash
-  sudo apt install meson ninja-build pkg-config libadwaita-1-dev libwebkitgtk-6.0-dev libayatana-appindicator-glib-dev
+  sudo apt install meson ninja-build pkg-config libadwaita-1-dev libwebkitgtk-6.0-dev
   ```
 - For the top bar icon on GNOME, the
   [AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)

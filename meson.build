@@ -11,7 +11,6 @@ project('vpnportal', 'c',
 # instalaron los paquetes -dev) y obtiene sus rutas de cabeceras y enlazado.
 adw_dep = dependency('libadwaita-1', version : '>= 1.6')
 webkit_dep = dependency('webkitgtk-6.0')
-indicator_dep = dependency('ayatana-appindicator-glib')
 gio_dep = dependency('gio-2.0')
 
 # La app.
@@ -22,7 +21,7 @@ executable('vpnportal',
   'src/login.c',
   'src/tray.c',
   'src/vpn.c',
-  dependencies : [adw_dep, webkit_dep, indicator_dep])
+  dependencies : [adw_dep, webkit_dep])
 
 # El sustituto de gpauth: un programa diminuto que solo necesita GIO.
 executable('vpnportal-auth',
