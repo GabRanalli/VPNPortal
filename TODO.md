@@ -1,5 +1,33 @@
 # Pendiente
 
+## Ideas: pequeñas y muy útiles
+- [ ] Notificaciones al conectar/desconectar y, sobre todo, un aviso antes de
+      que caduque la sesión (gpclient dice cuánto dura en el registro).
+- [ ] Detalles de la conexión: IP asignada, gateway, tiempo conectado y
+      tráfico (de /sys/class/net/tun0 y del registro de gpclient).
+- [ ] Reconectar sola tras suspender o si se cae la red (opcional por VPN).
+
+## Ideas: medianas
+- [ ] Línea de órdenes: `vpnportal --connect <VPN>`, `--disconnect`,
+      `--status` (para scripts y atajos de teclado).
+- [ ] Conectar automáticamente según la red (p. ej. fuera de la Wi-Fi de
+      casa, conectar Trabajo).
+- [ ] Exportar e importar VPN a un fichero, para compartirlas.
+- [ ] Elegir la gateway de una lista (las que ofrece el portal).
+
+## Ideas: grandes, para llegar a más gente
+- [ ] Paquetes: .deb/PPA, AUR (Arch), COPR (Fedora). Flatpak lo veo difícil:
+      la app necesita lanzar sudo y gpclient fuera del sandbox.
+- [ ] Pruebas automáticas y GitHub Actions (compilar y probar cada cambio).
+- [ ] Otras VPN con openconnect: Cisco AnyConnect, Fortinet, Pulse...
+- [ ] Integración en los Ajustes rápidos de GNOME (extensión de GNOME Shell,
+      en JavaScript).
+- [ ] Windows. Sería casi otra app: gpclient y WebKitGTK no existen allí
+      (habría que usar openconnect y WebView2), y la bandeja, los permisos
+      (UAC en vez de sudo) y el helper funcionan distinto. GTK/libadwaita sí
+      se pueden usar en Windows. Ojo: allí sí funciona el cliente oficial de
+      GlobalProtect, así que el hueco que cubre la app es menor.
+
 ## Hecho
 - [x] VPN configurables (añadir, editar, borrar) guardadas en ~/.config.
 - [x] Helper con lista de servidores aprobados (sudo sin contraseña seguro).
