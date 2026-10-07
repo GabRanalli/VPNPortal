@@ -2,7 +2,6 @@
 
 ## Para publicar mejor
 - [ ] Capturas en el README.
-- [ ] Instalación con `meson install` (binario, .desktop, icono, helper).
 
 ## Hecho
 - [x] VPN configurables (añadir, editar, borrar) guardadas en ~/.config.
@@ -22,6 +21,8 @@
 - [x] Temas propios (.css en ~/.config/vpnportal/themes), con recarga en
       vivo y guía en docs/THEMES.md.
 - [x] Inglés y español (gettext), elegible en Preferencias.
+- [x] Instalación con `sudo meson install` (app, lanzador, icono,
+      traducciones, helper y regla de sudo comprobada con visudo).
 - [x] Registro escueto ("Actividad") con los pasos y un botón para ver y
       copiar el registro completo de gpclient.
 - [x] Id de la app io.github.GabRanalli.VPNPortal, licencia GPL-3.0 y README

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vpnportal\n"
 "Report-Msgid-Bugs-To: https://github.com/GabRanalli/VPNPortal/issues\n"
-"POT-Creation-Date: 2026-10-07 11:58+0200\n"
+"POT-Creation-Date: 2026-10-07 12:02+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -593,4 +593,17 @@ msgstr ""
 
 #: src/vpn.c:578
 msgid "Connecting…"
+msgstr ""
+
+#: data/io.github.GabRanalli.VPNPortal.desktop.in:3
+msgid "VPN Portal"
+msgstr ""
+
+#: data/io.github.GabRanalli.VPNPortal.desktop.in:4
+msgid "Manage your GlobalProtect VPNs"
+msgstr ""
+
+#. Las palabras con las que lo encuentras al buscar en GNOME (separadas por ;)
+#: data/io.github.GabRanalli.VPNPortal.desktop.in:6
+msgid "VPN;GlobalProtect;network;"
 msgstr ""

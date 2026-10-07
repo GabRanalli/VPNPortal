@@ -13,27 +13,34 @@ Así, un programa malicioso que corra con tu usuario no puede conectarte a un
 servidor suyo sin conocer tu contraseña.
 
 Para el **login dentro de la app**, el helper le dice a gpclient que use
-`/usr/local/libexec/vpnportal-auth` en vez de su programa de login (`gpauth`).
+`vpnportal-auth` (en `libexec`) en vez de su programa de login (`gpauth`).
 `vpnportal-auth` le pide el login a la app por D-Bus y le devuelve el resultado a
 gpclient. Si no está instalado, gpclient abre la ventana de gpauth como siempre.
 
-## Instalar (una vez, y de nuevo si cambia el helper o vpnportal-auth)
+## Los ficheros de esta carpeta
 
-```bash
-# 1. El helper, propiedad de root (así nadie más puede modificarlo)
-sudo install -o root -g root -m 0755 system/vpnportal-helper /usr/local/sbin/vpnportal-helper
+Son plantillas (`.in`): Meson rellena las marcas `@SBINDIR@`, `@LIBEXECDIR@` y
+`@SUDO_GROUP@` con las rutas reales al configurar, y las instala con
+`sudo meson install -C build`:
 
-# 2. El sustituto de gpauth (se compila con "meson compile -C build")
-sudo install -o root -g root -m 0755 build/vpnportal-auth /usr/local/libexec/vpnportal-auth
+| Plantilla                | Se instala en (con `/usr/local`)        | Permisos   |
+|--------------------------|-----------------------------------------|------------|
+| `vpnportal-helper.in`    | `/usr/local/sbin/vpnportal-helper`      | `0755`     |
+| `vpnportal.sudoers.in`   | `/etc/sudoers.d/vpnportal`              | `0440`     |
 
-# 3. La regla de sudo: primero se COMPRUEBA la sintaxis, y solo si está bien se instala
-sudo visudo -cf system/vpnportal.sudoers && sudo install -o root -g root -m 0440 system/vpnportal.sudoers /etc/sudoers.d/vpnportal
-```
+La regla de sudo se comprueba con `visudo -cf` al configurar: si no fuera
+válida, Meson se detiene antes de instalar nada (un fichero de sudo roto
+puede dejarte sin sudo).
 
-La regla es para el grupo `sudo` (Debian/Ubuntu). En Fedora o Arch cambia
-`%sudo` por `%wheel` en `vpnportal.sudoers` antes de instalarla.
+Opciones (`meson setup build -D...`):
 
-Para comprobarlo: `sudo -n -l` debería listar `vpnportal-helper connect *`.
+- `sudo_group` (por defecto `sudo`): el grupo de administradores. En Fedora o
+  Arch, `-Dsudo_group=wheel`.
+- `system_files` (por defecto `true`): con `false` no se instalan el helper ni
+  la regla (la app no podrá conectar sin ellos).
+
+Para comprobar la regla instalada: `sudo -n -l` debería listar
+`vpnportal-helper connect *`.
 
 ## Ver o quitar servidores aprobados
 
@@ -45,5 +52,6 @@ sudoedit /etc/vpnportal/allowed-hosts            # quitar alguno
 ## Desinstalar
 
 ```bash
-sudo rm -r /etc/sudoers.d/vpnportal /usr/local/sbin/vpnportal-helper /usr/local/libexec/vpnportal-auth /etc/vpnportal
+sudo ninja -C build uninstall    # todo lo instalado
+sudo rm -r /etc/vpnportal        # y, si quieres, la lista de aprobados
 ```

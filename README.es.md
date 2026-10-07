@@ -44,42 +44,30 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
   (viene activada en Ubuntu). Sin ella la app funciona, pero cerrar la ventana
   la cierra.
 
-## Compilar
+## Compilar e instalar
 
 ```bash
 meson setup build
 meson compile -C build
+sudo meson install -C build
 ```
 
-## Instalar los ficheros de sistema
+Instala, en `/usr/local`: la app, su lanzador e icono (aparece en el menú de
+aplicaciones de GNOME), las traducciones, y las dos piezas de sistema que
+necesita para conectar sin contraseña: un pequeño script (el helper) y una
+regla de sudo (ver [Seguridad](#seguridad)). La regla de sudo se comprueba
+con `visudo` antes de instalar nada.
 
-`gpclient` necesita root. La app nunca lo lanza directamente: pasa siempre por
-un pequeño script (el helper) que solo admite una lista cerrada de opciones.
-Se instala una vez (y de nuevo cuando cambie):
+La regla es para el grupo `sudo` (Debian/Ubuntu). En Fedora o Arch, configura
+con `meson setup build -Dsudo_group=wheel`.
 
-```bash
-# 1. El helper, propiedad de root
-sudo install -o root -g root -m 0755 system/vpnportal-helper /usr/local/sbin/vpnportal-helper
-
-# 2. El puente para el login dentro de la app (sustituye a la ventana de gpauth)
-sudo install -o root -g root -m 0755 build/vpnportal-auth /usr/local/libexec/vpnportal-auth
-
-# 3. La regla de sudo: primero se comprueba la sintaxis y solo si está bien se instala
-sudo visudo -cf system/vpnportal.sudoers && sudo install -o root -g root -m 0440 system/vpnportal.sudoers /etc/sudoers.d/vpnportal
-```
-
-La regla es para el grupo `sudo` (Debian/Ubuntu). En Fedora o Arch, cambia
-antes `%sudo` por `%wheel` en `system/vpnportal.sudoers`.
-
-Más detalles, y cómo desinstalarlo, en [system/README.md](system/README.md).
+Para desinstalar: `sudo ninja -C build uninstall`. Más detalles en
+[system/README.md](system/README.md).
 
 ## Uso
 
-```bash
-./build/vpnportal
-```
-
-Pulsa **+** para añadir una VPN. La primera vez que conectas a un portal o
+Abre **VPN Portal** desde el menú de aplicaciones (o ejecuta `vpnportal`) y
+pulsa **+** para añadir una VPN. La primera vez que conectas a un portal o
 gateway nuevo, GNOME te pide la contraseña de administrador una vez para
 aprobarlo; a partir de ahí, conectar nunca la vuelve a pedir.
 

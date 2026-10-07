@@ -1,0 +1,6 @@
+# Opciones de compilación/instalación. Se cambian al configurar, p. ej.:
+#   meson setup build -Dsudo_group=wheel
+option('sudo_group', type : 'string', value : 'sudo',
+       description : 'Grupo de administradores para la regla de sudo (sudo en Debian/Ubuntu, wheel en Fedora/Arch)')
+option('system_files', type : 'boolean', value : true,
+       description : 'Instalar el helper y la regla de sudo (necesarios para conectar)')

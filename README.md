@@ -45,43 +45,30 @@ of [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnec
   (enabled by default on Ubuntu). Without it the app still works, but closing
   the window quits it.
 
-## Build
+## Build and install
 
 ```bash
 meson setup build
 meson compile -C build
+sudo meson install -C build
 ```
 
-## Install the system files
-
-`gpclient` needs root. The app never runs it directly: it always goes through
-a small helper script with a strict allowlist of options. Install it once
-(and again whenever it changes):
-
-```bash
-# 1. The helper, owned by root
-sudo install -o root -g root -m 0755 system/vpnportal-helper /usr/local/sbin/vpnportal-helper
-
-# 2. The in-app login bridge (replaces gpauth's window)
-sudo install -o root -g root -m 0755 build/vpnportal-auth /usr/local/libexec/vpnportal-auth
-
-# 3. The sudo rule: check the syntax first, install only if it is valid
-sudo visudo -cf system/vpnportal.sudoers && sudo install -o root -g root -m 0440 system/vpnportal.sudoers /etc/sudoers.d/vpnportal
-```
+This installs, under `/usr/local`: the app, its launcher and icon (it shows
+up in GNOME's app grid), the translations, and the two system pieces it needs
+to connect without a password: a small helper script and a sudo rule (see
+[Security](#security)). The sudo rule is checked with `visudo` before
+anything is installed.
 
 The sudo rule is for the `sudo` group (Debian/Ubuntu). On Fedora or Arch,
-change `%sudo` to `%wheel` in `system/vpnportal.sudoers` first.
+configure with `meson setup build -Dsudo_group=wheel`.
 
-More details, and how to uninstall, in [system/README.md](system/README.md)
-(Spanish).
+To uninstall: `sudo ninja -C build uninstall`. More details in
+[system/README.md](system/README.md) (Spanish).
 
 ## Usage
 
-```bash
-./build/vpnportal
-```
-
-Press **+** to add a VPN. The first time you connect to a new portal or
+Open **VPN Portal** from the app grid (or run `vpnportal`) and press **+** to
+add a VPN. The first time you connect to a new portal or
 gateway, GNOME asks for your admin password once to approve it; after that,
 connecting never asks again.
 

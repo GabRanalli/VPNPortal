@@ -1,7 +1,8 @@
 #!/bin/bash
 # vpnportal-helper — la ÚNICA puerta para lanzar gpclient como root.
 #
-# Se instala en /usr/local/sbin (propiedad de root) y tiene dos órdenes:
+# Meson lo instala (propiedad de root) en @SBINDIR@ rellenando las rutas
+# marcadas con @...@. Tiene dos órdenes:
 #
 #   allow <host>...      Aprueba servidores. Se ejecuta con pkexec, así que
 #                        pide contraseña. La app lo usa la primera vez que
@@ -23,7 +24,7 @@ umask 022
 GPCLIENT=/usr/bin/gpclient
 ALLOWLIST=/etc/vpnportal/allowed-hosts
 # Sustituto de gpauth que muestra el login dentro de la app.
-AUTH_BINARY=/usr/local/libexec/vpnportal-auth
+AUTH_BINARY=@LIBEXECDIR@/vpnportal-auth
 
 die() {
   echo "vpnportal-helper: $*" >&2

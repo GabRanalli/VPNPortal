@@ -1,0 +1,10 @@
+# /etc/sudoers.d/vpnportal — los administradores (grupo @SUDO_GROUP@) pueden lanzar
+# "vpnportal-helper connect ..." sin contraseña.
+#
+# El "*" admite cualquier argumento. Es seguro SOLO porque el helper valida
+# cada uno y únicamente conecta a servidores aprobados antes con contraseña
+# (/etc/vpnportal/allowed-hosts). "allow" NO está aquí: siempre pide contraseña.
+#
+# (Meson rellena @...@ al configurar y lo comprueba con "visudo -cf" antes de
+# instalarlo: un fichero de sudo roto podría dejarte sin sudo.)
+%@SUDO_GROUP@ ALL=(root) NOPASSWD: @SBINDIR@/vpnportal-helper connect *

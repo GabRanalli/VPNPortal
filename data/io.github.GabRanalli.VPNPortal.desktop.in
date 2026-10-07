@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=VPN Portal
+Comment=Manage your GlobalProtect VPNs
+# Las palabras con las que lo encuentras al buscar en GNOME (separadas por ;)
+Keywords=VPN;GlobalProtect;network;
+Exec=vpnportal
+Icon=io.github.GabRanalli.VPNPortal
+Terminal=false
+Categories=Network;GTK;
+StartupNotify=true

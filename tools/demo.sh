@@ -54,7 +54,7 @@ printf '#!/bin/bash\necho "(demo: aquí GNOME pediría tu contraseña)"\nexec "$
 sed -e "s|^GPCLIENT=.*|GPCLIENT=$DEMO/gpclient|" \
     -e "s|^ALLOWLIST=.*|ALLOWLIST=$DEMO/etc/allowed-hosts|" \
     -e "s|^AUTH_BINARY=.*|AUTH_BINARY=/nonexistent|" \
-    "$ROOT/system/vpnportal-helper" > "$DEMO/vpnportal-helper"
+    "$ROOT/system/vpnportal-helper.in" > "$DEMO/vpnportal-helper"
 
 chmod +x "$DEMO/gpclient" "$DEMO/bin/sudo" "$DEMO/bin/pkexec" "$DEMO/vpnportal-helper"
 

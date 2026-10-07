@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Icono de VPN Portal: baldosa azul (estilo GNOME), un anillo de
+     "portal" y un escudo con cerradura. 128x128, como piden las guías
+     de iconos de GNOME. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#62a0ea"/>
+      <stop offset="1" stop-color="#1c71d8"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#deddda"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.62" stop-color="#99c1f1" stop-opacity="0"/>
+      <stop offset="0.8" stop-color="#c0e2ff" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#99c1f1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- La baldosa: una base más oscura debajo da sensación de grosor. -->
+  <rect x="12" y="20" width="104" height="100" rx="20" fill="#1a5fb4"/>
+  <rect x="12" y="12" width="104" height="100" rx="20" fill="url(#tile)"/>
+  <!-- El anillo del portal. -->
+  <circle cx="64" cy="62" r="42" fill="url(#glow)"/>
+  <!-- El escudo, con una sombra suave. -->
+  <path d="M64 32 L90 41 V62 C90 79 79 91 64 97 C49 91 38 79 38 62 V41 Z"
+        fill="#000000" fill-opacity="0.18" transform="translate(0 3)"/>
+  <path d="M64 30 L90 39 V60 C90 77 79 89 64 95 C49 89 38 77 38 60 V39 Z"
+        fill="url(#shield)"/>
+  <!-- La cerradura. -->
+  <circle cx="64" cy="57" r="8" fill="#1a5fb4"/>
+  <path d="M59.5 61 H68.5 L71 78 H57 Z" fill="#1a5fb4"/>
+</svg>

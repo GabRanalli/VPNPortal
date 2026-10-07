@@ -5,3 +5,4 @@ src/main.c
 src/theme.c
 src/tray.c
 src/vpn.c
+data/io.github.GabRanalli.VPNPortal.desktop.in
