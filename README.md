@@ -131,6 +131,12 @@ in `po/LINGUAS` and create `po/<code>.po` (for example with
 `meson compile -C build vpnportal-pot`). See
 [TODO.md](TODO.md) (Spanish).
 
+## Use of AI
+
+During development I used **Claude Opus 5.5** to help with some parts of the
+main code, the design of the themes and the icon, finding and fixing bugs,
+and building the demo used to check the result.
+
 ## License
 
 [GPL-3.0-or-later](LICENSE).

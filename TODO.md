@@ -1,9 +1,5 @@
 # Pendiente
 
-## Siguiente
-- [ ] Nota en el README sobre para qué se ha usado Claude Opus 5.5 (la
-      escribe Gabriel).
-
 ## Hecho
 - [x] VPN configurables (añadir, editar, borrar) guardadas en ~/.config.
 - [x] Helper con lista de servidores aprobados (sudo sin contraseña seguro).
@@ -22,6 +18,7 @@
 - [x] Temas propios (.css en ~/.config/vpnportal/themes), con recarga en
       vivo y guía en docs/THEMES.md.
 - [x] Inglés y español (gettext), elegible en Preferencias.
+- [x] Nota en el README sobre la ayuda de Claude Opus 5.5.
 - [x] Capturas en el README (se regeneran con tools/screenshots.py).
 - [x] Instalación con `sudo meson install` (app, lanzador, icono,
       traducciones, helper y regla de sudo comprobada con visudo).

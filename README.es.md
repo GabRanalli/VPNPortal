@@ -131,6 +131,13 @@ código en `po/LINGUAS` y crea `po/<código>.po` (por ejemplo con
 `msginit -i po/vpnportal.pot -l fr`, después de
 `meson compile -C build vpnportal-pot`). Ver [TODO.md](TODO.md).
 
+## Uso de IA
+
+Durante el desarrollo he utilizado **Claude Opus 5.5** como apoyo en algunas
+partes del código principal, en el diseño de los temas y del icono, en la
+detección y corrección de errores, y en la creación de la demo con la que
+comprobar el resultado.
+
 ## Licencia
 
 [GPL-3.0 o posterior](LICENSE).
