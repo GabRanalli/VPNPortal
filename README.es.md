@@ -6,6 +6,8 @@ Una pequeña app de GNOME para gestionar tus VPN de **GlobalProtect** en Linux,
 construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect)
 (`gpclient`).
 
+<p align="center"><img src="docs/screenshots/es/main.png" width="420" alt="VPN Portal, conectada a una VPN"></p>
+
 - Añade todas las VPN que quieras (portal, gateway, usuario, HIP) y conecta o
   desconecta cada una con un clic.
 - **Login SAML dentro de la app**: la página de tu proveedor de identidad
@@ -29,6 +31,16 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
 
 > **Estado:** en sus primeras versiones, pero ya sirve para el día a día. En
 > inglés y en español. Probada en Ubuntu 26.04 con GNOME 50.
+
+## Capturas
+
+| Inicio de sesión dentro de la app | Preferencias |
+|:---:|:---:|
+| <img src="docs/screenshots/es/login.png" width="360" alt="Página de inicio de sesión dentro de la app"> | <img src="docs/screenshots/es/preferences.png" width="360" alt="Preferencias: temas"> |
+
+Temas: Frutiger Aero y Azul neón.
+
+<img src="docs/screenshots/es/themes.png" alt="Temas Frutiger Aero y Azul neón">
 
 ## Requisitos
 
