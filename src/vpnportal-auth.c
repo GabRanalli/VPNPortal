@@ -21,7 +21,7 @@ main (int argc, char *argv[])
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SESSION,
                                                     NULL, &error);
   if (bus == NULL) {
-    g_printerr ("vpnportal-auth: no hay bus de sesión: %s\n", error->message);
+    g_printerr ("vpnportal-auth: no session bus: %s\n", error->message);
     g_print ("{\"failure\":\"No session bus\"}\n");
     return 1;
   }
@@ -37,7 +37,7 @@ main (int argc, char *argv[])
                                  G_MAXINT,   /* sin límite: el login espera */
                                  NULL, &error);
   if (result == NULL) {
-    g_printerr ("vpnportal-auth: la app no respondió: %s\n", error->message);
+    g_printerr ("vpnportal-auth: the app did not answer: %s\n", error->message);
     g_print ("{\"failure\":\"VPN Portal app is not running\"}\n");
     return 1;
   }

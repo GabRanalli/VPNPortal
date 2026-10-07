@@ -25,6 +25,7 @@
 #include "tray.h"
 
 #include <gio/gio.h>
+#include <glib/gi18n.h>
 #include <unistd.h>
 
 #define ITEM_PATH "/StatusNotifierItem"
@@ -534,7 +535,7 @@ tray_update (const TrayItem *items, guint n_items)
   const char *new_icon = "network-vpn-disconnected-symbolic";
   g_autofree char *status = NULL;
   if (active == NULL) {
-    status = g_strdup ("Sin conexión");
+    status = g_strdup (_("Not connected"));
   } else {
     new_icon = active->state == VPN_CONNECTED ? "network-vpn-symbolic"
                                               : "network-vpn-acquiring-symbolic";
@@ -547,26 +548,26 @@ tray_update (const TrayItem *items, guint n_items)
   add_entry (ENTRY_TEXT, status, NULL);
   add_entry (ENTRY_SEPARATOR, NULL, NULL);
   if (active != NULL) {
-    g_autofree char *label = g_strdup_printf ("Desconectar %s", active->name);
+    g_autofree char *label = g_strdup_printf (_("Disconnect %s"), active->name);
     add_entry (ENTRY_TOGGLE, label, active->id);
     /* Las demás siguen ahí: elegirlas cambia de VPN (la app pregunta). */
     for (guint i = 0; i < n_items; i++) {
       if (&items[i] == active)
         continue;
-      g_autofree char *other = g_strdup_printf ("Cambiar a %s", items[i].name);
+      g_autofree char *other = g_strdup_printf (_("Switch to %s"), items[i].name);
       add_entry (ENTRY_TOGGLE, other, items[i].id);
     }
   } else if (n_items == 0) {
-    add_entry (ENTRY_TEXT, "Añade una VPN desde la ventana", NULL);
+    add_entry (ENTRY_TEXT, _("Add a VPN from the window"), NULL);
   } else {
     for (guint i = 0; i < n_items; i++) {
-      g_autofree char *label = g_strdup_printf ("Conectar %s", items[i].name);
+      g_autofree char *label = g_strdup_printf (_("Connect %s"), items[i].name);
       add_entry (ENTRY_TOGGLE, label, items[i].id);
     }
   }
   add_entry (ENTRY_SEPARATOR, NULL, NULL);
-  add_entry (ENTRY_SHOW, "Mostrar ventana", NULL);
-  add_entry (ENTRY_QUIT, "Salir", NULL);
+  add_entry (ENTRY_SHOW, _("Show window"), NULL);
+  add_entry (ENTRY_QUIT, _("Quit"), NULL);
   revision++;
 
   gboolean icon_changed = g_strcmp0 (icon_name, new_icon) != 0;

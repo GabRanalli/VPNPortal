@@ -20,6 +20,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <glib/gi18n.h>
+
 /* Los #ifndef permiten sustituir estas rutas al compilar una versión
  * de pruebas (gcc -DHELPER_PATH=...), sin tocar el código. */
 #ifndef HELPER_PATH
@@ -109,17 +111,19 @@ classify_line (Vpn *vpn, const char *line)
     const char *needle;
     const char *step;
   } known_steps[] = {
-    { "Portal prelogin",            "Contactando con el portal…" },
-    { "SAML auth launch",           "Esperando a que inicies sesión…" },
-    { "Retrieve the portal config", "Sesión iniciada; obteniendo la configuración…" },
-    { "Perform gateway login",      "Conectando a la gateway…" },
-    { "HIP report submitted",       "Informe HIP enviado" },
-    { "Connected to VPN",           "Túnel establecido" },
+    /* N_() marca el texto para traducir sin traducirlo aún (aquí no se
+     * puede: es una tabla fija); se traduce al usarlo, con _(). */
+    { "Portal prelogin",            N_("Contacting the portal…") },
+    { "SAML auth launch",           N_("Waiting for you to sign in…") },
+    { "Retrieve the portal config", N_("Signed in; getting the configuration…") },
+    { "Perform gateway login",      N_("Connecting to the gateway…") },
+    { "HIP report submitted",       N_("HIP report sent") },
+    { "Connected to VPN",           N_("Tunnel established") },
   };
 
   for (guint i = 0; i < G_N_ELEMENTS (known_steps); i++)
     if (strstr (line, known_steps[i].needle) != NULL) {
-      emit_step (vpn, VPN_STEP_PROGRESS, "%s", known_steps[i].step);
+      emit_step (vpn, VPN_STEP_PROGRESS, "%s", _(known_steps[i].step));
       return;
     }
 
@@ -127,7 +131,7 @@ classify_line (Vpn *vpn, const char *line)
    * gpclient ("[fecha ERROR módulo] mensaje" -> nos quedamos el mensaje). */
   if (g_str_has_prefix (line, "sudo: ")) {
     emit_step (vpn, VPN_STEP_ERROR,
-               "sudo pide contraseña: falta instalar la regla de sudo");
+               _("sudo asks for a password: the sudo rule is not installed"));
     return;
   }
   if (g_str_has_prefix (line, "vpnportal-helper: ")) {
@@ -239,20 +243,20 @@ on_process_exited (GObject *source, GAsyncResult *result, gpointer user_data)
 
   gboolean clean_exit = FALSE;
   if (g_subprocess_get_if_exited (proc)) {
-    emit_note (vpn, "gpclient ha terminado (código %d)",
+    emit_note (vpn, _("gpclient has exited (code %d)"),
                g_subprocess_get_exit_status (proc));
     clean_exit = g_subprocess_get_exit_status (proc) == 0;
   } else if (g_subprocess_get_if_signaled (proc)) {
-    emit_note (vpn, "gpclient ha terminado por la señal %d",
+    emit_note (vpn, _("gpclient was stopped by signal %d"),
                g_subprocess_get_term_sig (proc));
   }
 
   /* Si se lo pedimos nosotros (o acabó bien), es una desconexión normal. */
   if (vpn->state == VPN_DISCONNECTING || clean_exit)
-    emit_step (vpn, VPN_STEP_DONE, "Desconectada");
+    emit_step (vpn, VPN_STEP_DONE, _("Disconnected"));
   else
-    emit_step (vpn, VPN_STEP_ERROR, "La conexión ha fallado. Los detalles "
-                                    "están en el registro completo.");
+    emit_step (vpn, VPN_STEP_ERROR, _("The connection failed. The details "
+                                      "are in the full log."));
 
   stop_run (vpn);
   set_state (vpn, VPN_DISCONNECTED);
@@ -266,11 +270,11 @@ poll_tunnel (gpointer user_data)
   gboolean tun_up = g_file_test (TUN_PATH, G_FILE_TEST_EXISTS);
 
   if (vpn->state == VPN_CONNECTING && tun_up) {
-    emit_step (vpn, VPN_STEP_DONE, "Conectada");
+    emit_step (vpn, VPN_STEP_DONE, _("Connected"));
     set_state (vpn, VPN_CONNECTED);
   } else if (vpn->state == VPN_CONNECTED && !tun_up) {
     emit_step (vpn, VPN_STEP_PROGRESS,
-               "Se ha perdido el túnel; gpclient está reconectando…");
+               _("The tunnel was lost; gpclient is reconnecting…"));
     set_state (vpn, VPN_CONNECTING);   /* se cayó; gpclient reintenta */
   }
 
@@ -285,7 +289,7 @@ force_disconnect (gpointer user_data)
 
   vpn->kill_id = 0;   /* este temporizador ya no existirá al volver */
   if (vpn->proc != NULL) {
-    emit_note (vpn, "No responde a Ctrl+C; enviando SIGTERM");
+    emit_note (vpn, _("Not responding to Ctrl+C; sending SIGTERM"));
     g_subprocess_send_signal (vpn->proc, SIGTERM);
   }
   return G_SOURCE_REMOVE;   /* = no volver a llamarme */
@@ -318,7 +322,7 @@ start_connection (Vpn *vpn)
   g_auto (GStrv) argv = g_strv_builder_end (builder);
 
   g_autofree char *command = g_strjoinv (" ", argv);
-  emit_note (vpn, "Lanzando: %s", command);
+  emit_note (vpn, _("Running: %s"), command);
 
   /* Flags: queremos LEER su salida (STDOUT_PIPE) y que los errores
    * (stderr) vayan por la misma tubería (STDERR_MERGE). La entrada
@@ -329,8 +333,8 @@ start_connection (Vpn *vpn)
                                  G_SUBPROCESS_FLAGS_STDERR_MERGE,
                                  &error);
   if (vpn->proc == NULL) {
-    emit_note (vpn, "No se pudo lanzar sudo: %s", error->message);
-    emit_step (vpn, VPN_STEP_ERROR, "No se pudo lanzar gpclient");
+    emit_note (vpn, _("Could not run sudo: %s"), error->message);
+    emit_step (vpn, VPN_STEP_ERROR, _("Could not start gpclient"));
     set_state (vpn, VPN_DISCONNECTED);
     return;
   }
@@ -395,16 +399,16 @@ on_approval_done (GObject *source, GAsyncResult *result, gpointer user_data)
   /* Si mientras tanto le diste a Desconectar, el estado ya no es
    * CONNECTING y no seguimos aunque se haya aprobado. */
   if (approved && vpn->state == VPN_CONNECTING) {
-    emit_step (vpn, VPN_STEP_PROGRESS, "Servidor aprobado");
+    emit_step (vpn, VPN_STEP_PROGRESS, _("Server approved"));
     start_connection (vpn);
     return;
   }
 
   if (vpn->state == VPN_DISCONNECTING) {   /* lo cancelaste tú */
-    emit_step (vpn, VPN_STEP_DONE, "Cancelada");
+    emit_step (vpn, VPN_STEP_DONE, _("Cancelled"));
   } else {
-    emit_note (vpn, "No se ha aprobado (¿se canceló la contraseña?)");
-    emit_step (vpn, VPN_STEP_ERROR, "No se ha aprobado el servidor");
+    emit_note (vpn, _("Not approved (was the password dialog cancelled?)"));
+    emit_step (vpn, VPN_STEP_ERROR, _("The server was not approved"));
   }
   set_state (vpn, VPN_DISCONNECTED);
 }
@@ -422,18 +426,18 @@ start_approval (Vpn *vpn, const char * const *hosts)
   g_auto (GStrv) argv = g_strv_builder_end (builder);
 
   g_autofree char *list = g_strjoinv (", ", (char **) hosts);
-  emit_note (vpn, "Primera conexión a %s: hay que aprobarlo una vez "
-                  "(te pedirá la contraseña)", list);
-  emit_step (vpn, VPN_STEP_PROGRESS, "Aprobando el servidor (te pedirá la "
-                                     "contraseña, solo esta vez)…");
+  emit_note (vpn, _("First connection to %s: it has to be approved once "
+                    "(you will be asked for your password)"), list);
+  emit_step (vpn, VPN_STEP_PROGRESS, _("Approving the server (asks for your "
+                                       "password, only this time)…"));
 
   vpn->approve_proc = g_subprocess_newv ((const char * const *) argv,
                                          G_SUBPROCESS_FLAGS_STDOUT_PIPE |
                                          G_SUBPROCESS_FLAGS_STDERR_MERGE,
                                          &error);
   if (vpn->approve_proc == NULL) {
-    emit_note (vpn, "No se pudo lanzar pkexec: %s", error->message);
-    emit_step (vpn, VPN_STEP_ERROR, "No se pudo pedir la contraseña");
+    emit_note (vpn, _("Could not run pkexec: %s"), error->message);
+    emit_step (vpn, VPN_STEP_ERROR, _("Could not ask for the password"));
     return;
   }
 
@@ -507,15 +511,15 @@ vpn_connect (Vpn *vpn)
   if (vpn->state != VPN_DISCONNECTED)
     return;
 
-  emit_step (vpn, VPN_STEP_BEGIN, "Iniciando la conexión");
+  emit_step (vpn, VPN_STEP_BEGIN, _("Starting the connection"));
 
   /* gpclient solo admite una instancia a la vez; si ya hay túnel,
    * es que hay otra VPN puesta (quizá desde la terminal). */
   if (g_file_test (TUN_PATH, G_FILE_TEST_EXISTS)) {
-    emit_note (vpn, "Ya hay un túnel VPN activo (%s). Desconéctalo antes.",
-               TUN_PATH);
-    emit_step (vpn, VPN_STEP_ERROR, "Ya hay otra VPN conectada fuera de la "
-                                    "app. Desconéctala antes.");
+    emit_note (vpn, _("There is already an active VPN tunnel (%s). "
+                      "Disconnect it first."), TUN_PATH);
+    emit_step (vpn, VPN_STEP_ERROR, _("Another VPN is connected outside the "
+                                      "app. Disconnect it first."));
     return;
   }
 
@@ -544,7 +548,7 @@ vpn_disconnect (Vpn *vpn)
 
   /* Aún en el paso 1 (ventana de contraseña abierta): lo cancelamos. */
   if (vpn->approve_proc != NULL) {
-    emit_step (vpn, VPN_STEP_PROGRESS, "Cancelando…");
+    emit_step (vpn, VPN_STEP_PROGRESS, _("Cancelling…"));
     set_state (vpn, VPN_DISCONNECTING);
     g_subprocess_send_signal (vpn->approve_proc, SIGTERM);
     return;
@@ -558,8 +562,8 @@ vpn_disconnect (Vpn *vpn)
    * (nuestro hijo directo, que es "nuestro" y podemos señalizar), y sudo
    * lo reenvía a gpclient, que corre como root.
    */
-  emit_note (vpn, "Desconectando (Ctrl+C)…");
-  emit_step (vpn, VPN_STEP_PROGRESS, "Desconectando…");
+  emit_note (vpn, _("Disconnecting (Ctrl+C)…"));
+  emit_step (vpn, VPN_STEP_PROGRESS, _("Disconnecting…"));
   set_state (vpn, VPN_DISCONNECTING);
   g_subprocess_send_signal (vpn->proc, SIGINT);
   vpn->kill_id = g_timeout_add_seconds (DISCONNECT_TIMEOUT,
@@ -570,10 +574,10 @@ const char *
 vpn_state_to_string (VpnState state)
 {
   switch (state) {
-  case VPN_DISCONNECTED:  return "Desconectada";
-  case VPN_CONNECTING:    return "Conectando…";
-  case VPN_CONNECTED:     return "Conectada";
-  case VPN_DISCONNECTING: return "Desconectando…";
+  case VPN_DISCONNECTED:  return _("Disconnected");
+  case VPN_CONNECTING:    return _("Connecting…");
+  case VPN_CONNECTED:     return _("Connected");
+  case VPN_DISCONNECTING: return _("Disconnecting…");
   }
   return "?";
 }

@@ -1,8 +1,5 @@
 # Pendiente
 
-## Siguiente
-- [ ] Interfaz en inglés (y quizá traducción al español con gettext).
-
 ## Para publicar mejor
 - [ ] Capturas en el README.
 - [ ] Instalación con `meson install` (binario, .desktop, icono, helper).
@@ -24,6 +21,7 @@
       Frutiger Aero.
 - [x] Temas propios (.css en ~/.config/vpnportal/themes), con recarga en
       vivo y guía en docs/THEMES.md.
+- [x] Inglés y español (gettext), elegible en Preferencias.
 - [x] Registro escueto ("Actividad") con los pasos y un botón para ver y
       copiar el registro completo de gpclient.
 - [x] Id de la app io.github.GabRanalli.VPNPortal, licencia GPL-3.0 y README

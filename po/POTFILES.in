@@ -1,0 +1,7 @@
+# Ficheros con textos traducibles _("...") / N_("...").
+src/config.c
+src/login.c
+src/main.c
+src/theme.c
+src/tray.c
+src/vpn.c

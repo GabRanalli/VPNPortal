@@ -211,7 +211,7 @@ handle_method_call (GDBusConnection       *connection,
   request->invocation = g_object_ref (invocation);
 
   if (request->server == NULL || request->saml_request == NULL) {
-    auth_request_fail (request, "Faltan el servidor o --saml-request");
+    auth_request_fail (request, "Missing server or --saml-request");
     return;
   }
 

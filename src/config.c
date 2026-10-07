@@ -5,6 +5,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <string.h>
 
@@ -68,7 +69,7 @@ settings_save (GKeyFile *keyfile)
 
   g_mkdir_with_parents (dir, 0700);
   if (!g_key_file_save_to_file (keyfile, path, &error))
-    g_warning ("No se pudo guardar %s: %s", path, error->message);
+    g_warning ("Could not save %s: %s", path, error->message);
 }
 
 /* Al guardar un ajuste cargamos antes los demás, para no borrarlos. */
@@ -219,7 +220,7 @@ vpn_config_save (GPtrArray *configs, GError **error)
   if (g_mkdir_with_parents (dir, 0700) != 0) {
     int saved_errno = errno;
     g_set_error (error, G_FILE_ERROR, g_file_error_from_errno (saved_errno),
-                 "No se pudo crear %s: %s", dir, g_strerror (saved_errno));
+                 _("Could not create %s: %s"), dir, g_strerror (saved_errno));
     return FALSE;
   }
 

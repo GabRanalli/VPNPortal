@@ -23,11 +23,12 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
   (cielo, cristal, burbujas y botones con brillo), en Preferencias (Ctrl+,).
   También puedes **hacer el tuyo**: un tema es solo un fichero `.css`, ver
   [docs/THEMES.es.md](docs/THEMES.es.md).
+- **En inglés y en español**, según el idioma de tu sistema o el que elijas
+  en Preferencias.
 - **Conectar sin contraseña**, sin regalar root (ver [Seguridad](#seguridad)).
 
-> **Estado:** en sus primeras versiones, pero ya sirve para el día a día. La
-> interfaz está en español de momento (está previsto pasarla a inglés).
-> Probada en Ubuntu 26.04 con GNOME 50.
+> **Estado:** en sus primeras versiones, pero ya sirve para el día a día. En
+> inglés y en español. Probada en Ubuntu 26.04 con GNOME 50.
 
 ## Requisitos
 
@@ -36,7 +37,7 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
 - GTK 4, libadwaita ≥ 1.6 y WebKitGTK 6.0. En Ubuntu/Debian:
 
   ```bash
-  sudo apt install meson ninja-build pkg-config libadwaita-1-dev libwebkitgtk-6.0-dev
+  sudo apt install meson ninja-build pkg-config gettext libadwaita-1-dev libwebkitgtk-6.0-dev
   ```
 - Para el icono de la barra superior en GNOME, la
   [extensión AppIndicator](https://extensions.gnome.org/extension/615/appindicator-support/)
@@ -125,7 +126,10 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Próximamente
 
-Interfaz en inglés. Ver [TODO.md](TODO.md).
+Más idiomas: las traducciones están en [po/](po/). Para añadir uno, pon su
+código en `po/LINGUAS` y crea `po/<código>.po` (por ejemplo con
+`msginit -i po/vpnportal.pot -l fr`, después de
+`meson compile -C build vpnportal-pot`). Ver [TODO.md](TODO.md).
 
 ## Licencia
 

@@ -18,7 +18,10 @@
 #include <adwaita.h>
 #include <errno.h>
 #include <glib-unix.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
+#include <locale.h>
+#include <unistd.h>
 
 #include "auth.h"
 #include "config.h"
@@ -26,6 +29,16 @@
 #include "theme.h"
 #include "tray.h"
 #include "vpn.h"
+
+/* gettext (traducciones): el "dominio" (nombre de los ficheros .mo) y
+ * dónde están instalados. Meson los define; estos son por si se compila
+ * a mano (la demo). */
+#ifndef GETTEXT_PACKAGE
+#define GETTEXT_PACKAGE "vpnportal"
+#endif
+#ifndef LOCALEDIR
+#define LOCALEDIR "/usr/local/share/locale"
+#endif
 
 /* Todo lo de una VPN de la lista: sus datos, su conexión y su fila. */
 typedef struct {
@@ -51,10 +64,11 @@ static GtkWidget     *log_view;      /* su vista, si el diálogo está abierto *
 static char          *startup_error; /* error al cargar, para el registro */
 static AdwDialog     *login_dialog;  /* el login abierto, o NULL */
 static gboolean       quitting;      /* saliendo: esperando a desconectar */
+static gboolean       restarting;    /* al salir, volver a arrancar */
 static VpnRow        *pending_switch; /* VPN a conectar en cuanto se
                                        * desconecte la actual */
 
-/* El resumen de "Actividad": los pasos del último intento de conexión. */
+/* El resumen de _("Activity"): los pasos del último intento de conexión. */
 typedef enum {
   STEP_ICON_NONE,
   STEP_ICON_DONE,      /* ✓ */
@@ -188,10 +202,10 @@ refresh_activity (void)
   if (steps_vpn != NULL) {
     g_autofree char *name =
       g_markup_escape_text (vpn_get_config (steps_vpn)->name, -1);
-    title = g_strdup_printf ("Actividad · %s", name);
+    title = g_strdup_printf (_("Activity · %s"), name);
   }
   adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (activity_group),
-                                   title != NULL ? title : "Actividad");
+                                   title != NULL ? title : _("Activity"));
 
   gboolean busy = steps_vpn != NULL &&
                   vpn_get_state (steps_vpn) != VPN_DISCONNECTED;
@@ -296,7 +310,7 @@ refresh_rows (void)
                                     rows->len > 0 ? "list" : "empty");
 
   /* gpclient solo permite una conexión a la vez: si alguna está en uso,
-   * el botón de las demás es "Cambiar" (desconecta una y conecta otra). */
+   * el botón de las demás es _("Switch") (desconecta una y conecta otra). */
   gboolean any_busy = FALSE;
   for (guint i = 0; i < rows->len; i++) {
     VpnRow *r = g_ptr_array_index (rows, i);
@@ -326,18 +340,18 @@ refresh_rows (void)
 
     switch (state) {
     case VPN_DISCONNECTED:
-      gtk_button_set_label (button, any_busy ? "Cambiar" : "Conectar");
+      gtk_button_set_label (button, any_busy ? _("Switch") : _("Connect"));
       gtk_widget_add_css_class (r->button, "suggested-action");
       gtk_widget_set_sensitive (r->button, TRUE);
       break;
     case VPN_CONNECTING:
     case VPN_CONNECTED:
-      gtk_button_set_label (button, "Desconectar");
+      gtk_button_set_label (button, _("Disconnect"));
       gtk_widget_add_css_class (r->button, "destructive-action");
       gtk_widget_set_sensitive (r->button, TRUE);
       break;
     case VPN_DISCONNECTING:
-      gtk_button_set_label (button, "Desconectar");
+      gtk_button_set_label (button, _("Disconnect"));
       gtk_widget_set_sensitive (r->button, FALSE);
       break;
     }
@@ -421,8 +435,8 @@ switch_to (VpnRow *target)
     return;
 
   pending_switch = target;
-  g_autofree char *note = g_strdup_printf ("» Cambiando a %s: primero se "
-                                           "desconecta esta…",
+  g_autofree char *note = g_strdup_printf (_("» Switching to %s: this one is "
+                                             "disconnected first…"),
                                            target->config->name);
   append_log (active->config->name, note);
   vpn_disconnect (active->vpn);
@@ -454,13 +468,13 @@ request_connect (VpnRow *target)
 
   AdwDialog *alert = adw_alert_dialog_new (NULL, NULL);
   adw_alert_dialog_format_heading (ADW_ALERT_DIALOG (alert),
-                                   "¿Cambiar a %s?", target->config->name);
+                                   _("Switch to %s?"), target->config->name);
   adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
-                                "Se desconectará %s y después se conectará %s.",
+                                _("%s will be disconnected and then %s will be connected."),
                                 active->config->name, target->config->name);
   adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
-                                  "cancel", "Cancelar",
-                                  "switch", "Cambiar",
+                                  "cancel", _("Cancel"),
+                                  "switch", _("Switch"),
                                   NULL);
   adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "switch",
                                             ADW_RESPONSE_SUGGESTED);
@@ -491,8 +505,8 @@ on_auth_request (AuthRequest *request, gpointer user_data)
 
   append_log (active->config->name,
               auth_request_get_is_gateway (request)
-              ? "» Iniciando sesión en la gateway…"
-              : "» Iniciando sesión…");
+              ? _("» Signing in to the gateway…")
+              : _("» Signing in…"));
   gtk_window_present (main_window);
   login_dialog = login_dialog_run (GTK_WIDGET (main_window),
                                    active->config->name, request);
@@ -556,14 +570,14 @@ vpn_row_build (VpnRow *r)
   r->edit = gtk_button_new_from_icon_name ("document-edit-symbolic");
   gtk_widget_set_valign (r->edit, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (r->edit, "flat");
-  gtk_widget_set_tooltip_text (r->edit, "Editar");
+  gtk_widget_set_tooltip_text (r->edit, _("Edit"));
   gtk_accessible_update_property (GTK_ACCESSIBLE (r->edit),
-                                  GTK_ACCESSIBLE_PROPERTY_LABEL, "Editar",
+                                  GTK_ACCESSIBLE_PROPERTY_LABEL, _("Edit"),
                                   -1);
   g_signal_connect (r->edit, "clicked", G_CALLBACK (on_edit_clicked), r);
   adw_action_row_add_suffix (ADW_ACTION_ROW (r->row), r->edit);
 
-  r->button = gtk_button_new_with_label ("Conectar");
+  r->button = gtk_button_new_with_label (_("Connect"));
   gtk_widget_set_valign (r->button, GTK_ALIGN_CENTER);
   g_signal_connect (r->button, "clicked", G_CALLBACK (on_button_clicked), r);
   adw_action_row_add_suffix (ADW_ACTION_ROW (r->row), r->button);
@@ -712,13 +726,13 @@ on_delete_clicked (GtkButton *button, gpointer user_data)
   EditDialog *d = user_data;
 
   /* AdwAlertDialog: la típica pregunta de confirmación de GNOME. */
-  AdwDialog *alert = adw_alert_dialog_new ("¿Eliminar esta VPN?", NULL);
+  AdwDialog *alert = adw_alert_dialog_new (_("Delete this VPN?"), NULL);
   adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
-                                "Se borrará «%s» de la lista.",
+                                _("“%s” will be removed from the list."),
                                 d->editing->config->name);
   adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
-                                  "cancel", "Cancelar",
-                                  "delete", "Eliminar",
+                                  "cancel", _("Cancel"),
+                                  "delete", _("Delete"),
                                   NULL);
   adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "delete",
                                             ADW_RESPONSE_DESTRUCTIVE);
@@ -753,8 +767,8 @@ open_edit_dialog (VpnRow *editing)
 
   d->editing = editing;
   d->dialog = adw_dialog_new ();
-  adw_dialog_set_title (d->dialog, editing != NULL ? "Editar VPN"
-                                                   : "Nueva VPN");
+  adw_dialog_set_title (d->dialog, editing != NULL ? _("Edit VPN")
+                                                   : _("New VPN"));
   adw_dialog_set_content_width (d->dialog, 460);
   /* Guardamos 'd' dentro del diálogo: cuando el diálogo se destruya,
    * GTK llamará a g_free(d) por nosotros. */
@@ -765,12 +779,12 @@ open_edit_dialog (VpnRow *editing)
   adw_header_bar_set_show_start_title_buttons (ADW_HEADER_BAR (header), FALSE);
   adw_header_bar_set_show_end_title_buttons (ADW_HEADER_BAR (header), FALSE);
 
-  GtkWidget *cancel = gtk_button_new_with_label ("Cancelar");
+  GtkWidget *cancel = gtk_button_new_with_label (_("Cancel"));
   g_signal_connect_swapped (cancel, "clicked",
                             G_CALLBACK (adw_dialog_close), d->dialog);
   adw_header_bar_pack_start (ADW_HEADER_BAR (header), cancel);
 
-  d->save = gtk_button_new_with_label ("Guardar");
+  d->save = gtk_button_new_with_label (_("Save"));
   gtk_widget_add_css_class (d->save, "suggested-action");
   g_signal_connect (d->save, "clicked", G_CALLBACK (on_save_clicked), d);
   adw_header_bar_pack_end (ADW_HEADER_BAR (header), d->save);
@@ -778,20 +792,20 @@ open_edit_dialog (VpnRow *editing)
   /* Los campos. */
   GtkWidget *group = adw_preferences_group_new ();
   adw_preferences_group_set_description (ADW_PREFERENCES_GROUP (group),
-    "La primera vez que conectes a un servidor nuevo te pedirá la "
-    "contraseña de administrador para aprobarlo.");
-  d->name = add_entry (group, "Nombre", config ? config->name : "", d);
-  d->portal = add_entry (group, "Portal", config ? config->portal : "", d);
-  d->gateway = add_entry (group, "Gateway (vacío = automática)",
+    _("The first time you connect to a new server, you will be asked for "
+      "the administrator password to approve it."));
+  d->name = add_entry (group, _("Name"), config ? config->name : "", d);
+  d->portal = add_entry (group, _("Portal"), config ? config->portal : "", d);
+  d->gateway = add_entry (group, _("Gateway (empty = automatic)"),
                           config ? config->gateway : "", d);
-  d->user = add_entry (group, "Usuario (opcional)",
+  d->user = add_entry (group, _("User (optional)"),
                        config ? config->user : "", d);
 
   d->hip = adw_switch_row_new ();
   adw_preferences_row_set_title (ADW_PREFERENCES_ROW (d->hip),
-                                 "Enviar informe HIP");
+                                 _("Send HIP report"));
   adw_action_row_set_subtitle (ADW_ACTION_ROW (d->hip),
-                               "Solo si tu organización lo exige");
+                               _("Only if your organization requires it"));
   adw_switch_row_set_active (ADW_SWITCH_ROW (d->hip),
                              config != NULL && config->hip);
   adw_preferences_group_add (ADW_PREFERENCES_GROUP (group), d->hip);
@@ -802,7 +816,7 @@ open_edit_dialog (VpnRow *editing)
 
   /* Al editar, un botón rojo para eliminar, debajo de los campos. */
   if (editing != NULL) {
-    GtkWidget *delete_button = gtk_button_new_with_label ("Eliminar VPN");
+    GtkWidget *delete_button = gtk_button_new_with_label (_("Delete VPN"));
     gtk_widget_set_halign (delete_button, GTK_ALIGN_CENTER);
     gtk_widget_add_css_class (delete_button, "pill");
     gtk_widget_add_css_class (delete_button, "destructive-action");
@@ -843,11 +857,11 @@ build_empty_page (void)
   GtkWidget *status = adw_status_page_new ();
   adw_status_page_set_icon_name (ADW_STATUS_PAGE (status),
                                  "network-vpn-symbolic");
-  adw_status_page_set_title (ADW_STATUS_PAGE (status), "Sin VPN");
+  adw_status_page_set_title (ADW_STATUS_PAGE (status), _("No VPNs"));
   adw_status_page_set_description (ADW_STATUS_PAGE (status),
-                                   "Añade tu primera VPN de GlobalProtect.");
+                                   _("Add your first GlobalProtect VPN."));
 
-  GtkWidget *add = gtk_button_new_with_label ("Añadir VPN");
+  GtkWidget *add = gtk_button_new_with_label (_("Add VPN"));
   gtk_widget_set_halign (add, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (add, "pill");
   gtk_widget_add_css_class (add, "suggested-action");
@@ -869,7 +883,7 @@ on_copy_log_clicked (GtkButton *button, gpointer user_data)
   gdk_clipboard_set_text (gtk_widget_get_clipboard (GTK_WIDGET (button)), text);
 
   /* Un "toast": el mensajito que aparece abajo unos segundos. */
-  adw_toast_overlay_add_toast (overlay, adw_toast_new ("Registro copiado"));
+  adw_toast_overlay_add_toast (overlay, adw_toast_new (_("Log copied")));
 }
 
 /* El registro completo, en un diálogo aparte. */
@@ -899,9 +913,9 @@ on_show_log_clicked (GtkButton *button, gpointer user_data)
   adw_toast_overlay_set_child (ADW_TOAST_OVERLAY (overlay), scroller);
 
   GtkWidget *copy = gtk_button_new_from_icon_name ("edit-copy-symbolic");
-  gtk_widget_set_tooltip_text (copy, "Copiar todo");
+  gtk_widget_set_tooltip_text (copy, _("Copy all"));
   gtk_accessible_update_property (GTK_ACCESSIBLE (copy),
-                                  GTK_ACCESSIBLE_PROPERTY_LABEL, "Copiar todo",
+                                  GTK_ACCESSIBLE_PROPERTY_LABEL, _("Copy all"),
                                   -1);
   g_signal_connect (copy, "clicked", G_CALLBACK (on_copy_log_clicked), overlay);
 
@@ -913,7 +927,7 @@ on_show_log_clicked (GtkButton *button, gpointer user_data)
   adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), overlay);
 
   AdwDialog *dialog = adw_dialog_new ();
-  adw_dialog_set_title (dialog, "Registro completo");
+  adw_dialog_set_title (dialog, _("Full log"));
   adw_dialog_set_content_width (dialog, 760);
   adw_dialog_set_content_height (dialog, 520);
   adw_dialog_set_child (dialog, toolbar_view);
@@ -969,15 +983,15 @@ on_activity_resized (GtkAdjustment *adjustment, gpointer user_data)
     activity_scroll_id = g_idle_add (scroll_activity_to_bottom, adjustment);
 }
 
-/* La tarjeta "Actividad": los pasos + el botón del registro completo. */
+/* La tarjeta _("Activity"): los pasos + el botón del registro completo. */
 static GtkWidget *
 build_activity_group (void)
 {
   activity_group = adw_preferences_group_new ();
   adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (activity_group),
-                                   "Actividad");
+                                   _("Activity"));
 
-  GtkWidget *show_log = gtk_button_new_with_label ("Registro completo");
+  GtkWidget *show_log = gtk_button_new_with_label (_("Full log"));
   gtk_widget_add_css_class (show_log, "flat");
   gtk_widget_set_valign (show_log, GTK_ALIGN_CENTER);
   g_signal_connect (show_log, "clicked", G_CALLBACK (on_show_log_clicked),
@@ -991,7 +1005,7 @@ build_activity_group (void)
   gtk_list_box_set_show_separators (GTK_LIST_BOX (activity_list), TRUE);
 
   /* Lo que se ve cuando la lista está vacía. */
-  GtkWidget *placeholder = gtk_label_new ("Aún no hay actividad");
+  GtkWidget *placeholder = gtk_label_new (_("No activity yet"));
   gtk_widget_add_css_class (placeholder, "dim-label");
   gtk_widget_set_margin_top (placeholder, 18);
   gtk_widget_set_margin_bottom (placeholder, 18);
@@ -1034,7 +1048,7 @@ build_list_page (void)
 {
   vpn_group = adw_preferences_group_new ();
   adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (vpn_group),
-                                   "Conexiones");
+                                   _("Connections"));
   for (guint i = 0; i < rows->len; i++)
     vpn_row_build (g_ptr_array_index (rows, i));
 
@@ -1075,13 +1089,13 @@ show_close_hint (void)
     return;   /* ya está a la vista (p. ej. pulsaste la X dos veces) */
 
   AdwDialog *alert = adw_alert_dialog_new (
-    "VPN Portal sigue en marcha",
-    "Al cerrar la ventana, la app se queda en la barra superior para que "
-    "puedas conectar y desconectar desde su icono. Para cerrarla del todo, "
-    "usa «Salir» en ese menú o pulsa Ctrl+Q.");
+    _("VPN Portal keeps running"),
+    _("When you close the window, the app stays in the top bar so you can "
+      "connect and disconnect from its icon. To close it completely, use "
+      "“Quit” in that menu or press Ctrl+Q."));
   adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
-                                  "quit", "Salir del todo",
-                                  "hide", "Entendido",
+                                  "quit", _("Quit completely"),
+                                  "hide", _("Got it"),
                                   NULL);
   adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "hide",
                                             ADW_RESPONSE_SUGGESTED);
@@ -1140,8 +1154,8 @@ static void
 on_theme_problem (const char *message, gpointer user_data)
 {
   (void) user_data;
-  append_log ("Tema", message);
-  prefs_toast ("El tema tiene errores de CSS (detalles en el registro)");
+  append_log (_("Theme"), message);
+  prefs_toast (_("The theme has CSS errors (details in the log)"));
 }
 
 /* La acción "app.theme": su ESTADO es el id del tema actual ("aero"...).
@@ -1181,7 +1195,7 @@ on_remove_theme_confirmed (AdwAlertDialog *alert, const char *response,
   }
   select_theme (theme_get_current ());   /* por si era el actual */
   fill_theme_rows ();
-  prefs_toast ("Tema quitado");
+  prefs_toast (_("Theme removed"));
 }
 
 static void
@@ -1192,13 +1206,13 @@ on_remove_theme_clicked (GtkButton *button, gpointer user_data)
 
   AdwDialog *alert = adw_alert_dialog_new (NULL, NULL);
   adw_alert_dialog_format_heading (ADW_ALERT_DIALOG (alert),
-                                   "¿Quitar el tema «%s»?", theme->name);
+                                   _("Remove the theme “%s”?"), theme->name);
   adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
-                                "Se borrará su fichero de la carpeta de "
-                                "temas.");
+                                _("Its file will be deleted from the themes "
+                                  "folder."));
   adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
-                                  "cancel", "Cancelar",
-                                  "remove", "Quitar",
+                                  "cancel", _("Cancel"),
+                                  "remove", _("Remove"),
                                   NULL);
   adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "remove",
                                             ADW_RESPONSE_DESTRUCTIVE);
@@ -1249,10 +1263,10 @@ fill_theme_rows (void)
       GtkWidget *remove = gtk_button_new_from_icon_name ("user-trash-symbolic");
       gtk_widget_add_css_class (remove, "flat");
       gtk_widget_set_valign (remove, GTK_ALIGN_CENTER);
-      gtk_widget_set_tooltip_text (remove, "Quitar tema");
+      gtk_widget_set_tooltip_text (remove, _("Remove theme"));
       gtk_accessible_update_property (GTK_ACCESSIBLE (remove),
                                       GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                      "Quitar tema", -1);
+                                      _("Remove theme"), -1);
       g_signal_connect (remove, "clicked",
                         G_CALLBACK (on_remove_theme_clicked), (gpointer) theme);
       adw_action_row_add_suffix (ADW_ACTION_ROW (row), remove);
@@ -1299,7 +1313,7 @@ on_theme_file_chosen (GObject *source, GAsyncResult *result,
   }
   fill_theme_rows ();
   select_theme (id);
-  prefs_toast ("Tema añadido");
+  prefs_toast (_("Theme added"));
 }
 
 static void
@@ -1309,13 +1323,13 @@ on_add_theme_clicked (GtkButton *button, gpointer user_data)
 
   /* El selector de ficheros de GNOME, mostrando solo los .css. */
   g_autoptr (GtkFileFilter) filter = gtk_file_filter_new ();
-  gtk_file_filter_set_name (filter, "Temas (.css)");
+  gtk_file_filter_set_name (filter, _("Themes (.css)"));
   gtk_file_filter_add_suffix (filter, "css");
   g_autoptr (GListStore) filters = g_list_store_new (GTK_TYPE_FILE_FILTER);
   g_list_store_append (filters, filter);
 
   g_autoptr (GtkFileDialog) chooser = gtk_file_dialog_new ();
-  gtk_file_dialog_set_title (chooser, "Añadir tema");
+  gtk_file_dialog_set_title (chooser, _("Add theme"));
   gtk_file_dialog_set_filters (chooser, G_LIST_MODEL (filters));
   gtk_file_dialog_open (chooser, main_window, NULL, on_theme_file_chosen, NULL);
 }
@@ -1338,24 +1352,24 @@ build_user_themes_group (void)
 {
   GtkWidget *group = adw_preferences_group_new ();
   adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group),
-                                   "Temas propios");
+                                   _("Your themes"));
   adw_preferences_group_set_description (
     ADW_PREFERENCES_GROUP (group),
-    "Un tema es un fichero .css. Añade el tuyo y aparecerá arriba; si "
-    "editas el que tienes puesto, se recarga solo al guardar. "
-    "<a href=\"https://github.com/GabRanalli/VPNPortal/blob/main/docs/THEMES.md\">"
-    "Cómo hacer un tema</a>");
+    _("A theme is a .css file. Add yours and it will show up above; if you "
+      "edit the one in use, it reloads by itself when you save. "
+      "<a href=\"https://github.com/GabRanalli/VPNPortal/blob/main/docs/THEMES.md\">"
+      "How to make a theme</a>"));
 
   GtkWidget *folder = gtk_button_new_from_icon_name ("folder-open-symbolic");
   gtk_widget_add_css_class (folder, "flat");
-  gtk_widget_set_tooltip_text (folder, "Abrir la carpeta de temas");
+  gtk_widget_set_tooltip_text (folder, _("Open the themes folder"));
   gtk_accessible_update_property (GTK_ACCESSIBLE (folder),
                                   GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  "Abrir la carpeta de temas", -1);
+                                  _("Open the themes folder"), -1);
   g_signal_connect (folder, "clicked",
                     G_CALLBACK (on_open_themes_folder_clicked), NULL);
 
-  GtkWidget *add = gtk_button_new_with_label ("Añadir tema…");
+  GtkWidget *add = gtk_button_new_with_label (_("Add theme…"));
   g_signal_connect (add, "clicked", G_CALLBACK (on_add_theme_clicked), NULL);
 
   GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
@@ -1364,6 +1378,114 @@ build_user_themes_group (void)
   gtk_box_append (GTK_BOX (buttons), add);
   adw_preferences_group_set_header_suffix (ADW_PREFERENCES_GROUP (group),
                                            buttons);
+  return group;
+}
+
+/* ---------------------------------------------------------------- */
+/* Idioma y reiniciar                                               */
+/* ---------------------------------------------------------------- */
+
+/* Los idiomas del selector: "system" (el del sistema) y los traducidos.
+ * Cada idioma se escribe en su propio idioma, como es costumbre. */
+static const char * const language_ids[] = { "system", "en", "es" };
+
+static void
+restart_now (void)
+{
+  restarting = TRUE;
+  request_quit ();   /* sale limpio (desconectando) y main() relanza */
+}
+
+static void
+on_restart_confirmed (AdwAlertDialog *alert, const char *response,
+                      gpointer user_data)
+{
+  (void) alert; (void) response; (void) user_data;
+  restart_now ();
+}
+
+/* La acción "app.restart". Si hay una VPN en uso, avisamos antes:
+ * reiniciar la desconecta. */
+static void
+on_restart_action (GSimpleAction *action, GVariant *parameter,
+                   gpointer user_data)
+{
+  (void) action; (void) parameter; (void) user_data;
+  VpnRow *active = find_active_row ();
+
+  if (active == NULL) {
+    restart_now ();
+    return;
+  }
+
+  AdwDialog *alert = adw_alert_dialog_new (_("Restart now?"), NULL);
+  adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
+                                _("Restarting will disconnect %s."),
+                                active->config->name);
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
+                                  "cancel", _("Cancel"),
+                                  "restart", _("Restart"),
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert),
+                                            "restart",
+                                            ADW_RESPONSE_DESTRUCTIVE);
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (alert), "cancel");
+  g_signal_connect (alert, "response::restart",
+                    G_CALLBACK (on_restart_confirmed), NULL);
+  adw_dialog_present (alert, prefs_dialog != NULL
+                             ? GTK_WIDGET (prefs_dialog)
+                             : GTK_WIDGET (main_window));
+}
+
+/* Cambiaste el idioma en el desplegable: se guarda, y se ofrece
+ * reiniciar (los textos ya pintados no se pueden cambiar en caliente). */
+static void
+on_language_selected (AdwComboRow *row, GParamSpec *pspec, gpointer user_data)
+{
+  (void) pspec; (void) user_data;
+  guint selected = adw_combo_row_get_selected (row);
+  if (selected >= G_N_ELEMENTS (language_ids))
+    return;
+
+  app_settings_set_string ("language", language_ids[selected]);
+
+  AdwToast *toast = adw_toast_new (_("The language will change when the app "
+                                     "restarts"));
+  adw_toast_set_button_label (toast, _("Restart"));
+  adw_toast_set_action_name (toast, "app.restart");
+  adw_toast_set_timeout (toast, 0);   /* hasta que lo cierres */
+  adw_preferences_dialog_add_toast (ADW_PREFERENCES_DIALOG (prefs_dialog),
+                                    toast);
+}
+
+static GtkWidget *
+build_language_group (void)
+{
+  GtkWidget *group = adw_preferences_group_new ();
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group),
+                                   _("Language"));
+
+  /* AdwComboRow: una fila con desplegable. Las opciones van en un
+   * GtkStringList (una lista de textos). */
+  g_autoptr (GtkStringList) options = gtk_string_list_new (NULL);
+  gtk_string_list_append (options, _("Automatic (system language)"));
+  gtk_string_list_append (options, "English");
+  gtk_string_list_append (options, "Español");
+
+  GtkWidget *row = adw_combo_row_new ();
+  adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), _("Language"));
+  adw_combo_row_set_model (ADW_COMBO_ROW (row), G_LIST_MODEL (options));
+
+  g_autofree char *saved = app_settings_get_string ("language");
+  for (guint i = 0; i < G_N_ELEMENTS (language_ids); i++)
+    if (g_strcmp0 (saved, language_ids[i]) == 0)
+      adw_combo_row_set_selected (ADW_COMBO_ROW (row), i);
+
+  /* "notify::selected" = "ha cambiado la propiedad selected". Se conecta
+   * después de poner el valor guardado, para no dispararla al abrir. */
+  g_signal_connect (row, "notify::selected",
+                    G_CALLBACK (on_language_selected), NULL);
+  adw_preferences_group_add (ADW_PREFERENCES_GROUP (group), row);
   return group;
 }
 
@@ -1378,9 +1500,9 @@ on_preferences_action (GSimpleAction *action, GVariant *parameter,
 
   themes_group = adw_preferences_group_new ();
   adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (themes_group),
-                                   "Tema");
+                                   _("Theme"));
   adw_preferences_group_set_description (ADW_PREFERENCES_GROUP (themes_group),
-                                         "Se aplica al momento.");
+                                         _("Applied right away."));
   g_object_add_weak_pointer (G_OBJECT (themes_group),
                              (gpointer *) &themes_group);
   if (theme_rows == NULL)
@@ -1389,13 +1511,15 @@ on_preferences_action (GSimpleAction *action, GVariant *parameter,
   fill_theme_rows ();
 
   GtkWidget *page = adw_preferences_page_new ();
-  adw_preferences_page_set_title (ADW_PREFERENCES_PAGE (page), "Apariencia");
+  adw_preferences_page_set_title (ADW_PREFERENCES_PAGE (page), _("Appearance"));
   adw_preferences_page_set_icon_name (ADW_PREFERENCES_PAGE (page),
                                       "applications-graphics-symbolic");
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
                             ADW_PREFERENCES_GROUP (themes_group));
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
                             ADW_PREFERENCES_GROUP (build_user_themes_group ()));
+  adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
+                            ADW_PREFERENCES_GROUP (build_language_group ()));
 
   prefs_dialog = adw_preferences_dialog_new ();
   g_object_add_weak_pointer (G_OBJECT (prefs_dialog),
@@ -1427,11 +1551,11 @@ on_sessions_forgotten (GObject *source, GAsyncResult *result,
 
   if (!login_forget_sessions_finish (result, &error)) {
     append_log ("App", error->message);
-    show_toast ("No se pudieron olvidar las sesiones");
+    show_toast (_("Could not forget the sessions"));
     return;
   }
-  append_log ("App", "» Sesiones de inicio de sesión olvidadas");
-  show_toast ("Sesiones olvidadas");
+  append_log ("App", _("» Saved sign-in sessions forgotten"));
+  show_toast (_("Sessions forgotten"));
 }
 
 static void
@@ -1450,18 +1574,18 @@ on_forget_sessions_action (GSimpleAction *action, GVariant *parameter,
 
   /* Borrar las cookies a mitad de un login lo rompería. */
   if (login_dialog != NULL) {
-    show_toast ("Termina o cancela el inicio de sesión antes");
+    show_toast (_("Finish or cancel the sign-in first"));
     return;
   }
 
   AdwDialog *alert = adw_alert_dialog_new (
-    "¿Olvidar las sesiones guardadas?",
-    "La próxima vez que conectes tendrás que volver a iniciar sesión (y, "
-    "si lo usas, poner el código del móvil) en todas las VPN. Tus VPN "
-    "configuradas no se borran.");
+    _("Forget saved sessions?"),
+    _("Next time you connect you will have to sign in again (and enter "
+      "the code from your phone, if you use one) on every VPN. Your VPNs "
+      "are not deleted."));
   adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
-                                  "cancel", "Cancelar",
-                                  "forget", "Olvidar",
+                                  "cancel", _("Cancel"),
+                                  "forget", _("Forget"),
                                   NULL);
   adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "forget",
                                             ADW_RESPONSE_DESTRUCTIVE);
@@ -1520,7 +1644,7 @@ autostart_write (GError **error)
   g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_NAME,
                          "VPN Portal");
   g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_COMMENT,
-                         "Gestor de VPN GlobalProtect");
+                         "GlobalProtect VPN manager");
   g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_ICON,
                          "network-vpn");
   g_key_file_set_string (desktop, group, G_KEY_FILE_DESKTOP_KEY_EXEC, exec);
@@ -1607,7 +1731,7 @@ on_activate (GtkApplication *app, gpointer user_data)
   /* Botón "+" en la barra de título. */
   GtkWidget *header = adw_header_bar_new ();
   GtkWidget *add = gtk_button_new_from_icon_name ("list-add-symbolic");
-  gtk_widget_set_tooltip_text (add, "Añadir VPN");
+  gtk_widget_set_tooltip_text (add, _("Add VPN"));
   g_signal_connect (add, "clicked", G_CALLBACK (on_add_clicked), NULL);
   adw_header_bar_pack_start (ADW_HEADER_BAR (header), add);
 
@@ -1615,16 +1739,16 @@ on_activate (GtkApplication *app, gpointer user_data)
    * "app.autostart" tiene estado TRUE/FALSE y por eso sale como casilla. */
   g_autoptr (GMenu) menu = g_menu_new ();
   g_autoptr (GMenu) prefs_section = g_menu_new ();
-  g_menu_append (prefs_section, "Preferencias", "app.preferences");
+  g_menu_append (prefs_section, _("Preferences"), "app.preferences");
   g_menu_append_section (menu, NULL, G_MENU_MODEL (prefs_section));
   g_autoptr (GMenu) options_section = g_menu_new ();
-  g_menu_append (options_section, "Arrancar al iniciar sesión",
+  g_menu_append (options_section, _("Start when I log in"),
                  "app.autostart");
-  g_menu_append (options_section, "Olvidar sesiones guardadas…",
+  g_menu_append (options_section, _("Forget saved sessions…"),
                  "app.forget-sessions");
   g_menu_append_section (menu, NULL, G_MENU_MODEL (options_section));
   g_autoptr (GMenu) quit_section = g_menu_new ();
-  g_menu_append (quit_section, "Salir", "app.quit");
+  g_menu_append (quit_section, _("Quit"), "app.quit");
   g_menu_append_section (menu, NULL, G_MENU_MODEL (quit_section));
 
   GtkWidget *menu_button = gtk_menu_button_new ();
@@ -1633,7 +1757,7 @@ on_activate (GtkApplication *app, gpointer user_data)
   gtk_menu_button_set_menu_model (GTK_MENU_BUTTON (menu_button),
                                   G_MENU_MODEL (menu));
   gtk_menu_button_set_primary (GTK_MENU_BUTTON (menu_button), TRUE);  /* F10 */
-  gtk_widget_set_tooltip_text (menu_button, "Menú principal");
+  gtk_widget_set_tooltip_text (menu_button, _("Main menu"));
   adw_header_bar_pack_end (ADW_HEADER_BAR (header), menu_button);
 
   /* GtkStack: varias páginas apiladas, se ve una cada vez. */
@@ -1781,6 +1905,7 @@ on_startup (GApplication *app, gpointer user_data)
     { .name = "quit", .activate = on_quit_action },
     { .name = "forget-sessions", .activate = on_forget_sessions_action },
     { .name = "preferences", .activate = on_preferences_action },
+    { .name = "restart", .activate = on_restart_action },
     /* Con parámetro y estado de texto ("s") y sin .activate: activarla
      * con un id llama a .change_state con ese id. */
     { .name = "theme", .parameter_type = "s", .state = "'system'",
@@ -1820,7 +1945,7 @@ on_startup (GApplication *app, gpointer user_data)
 
   g_autoptr (GPtrArray) configs = vpn_config_load (&error);
   if (error != NULL)
-    startup_error = g_strdup_printf ("No se pudo leer la configuración: %s",
+    startup_error = g_strdup_printf (_("Could not read the configuration: %s"),
                                      error->message);
 
   /* Traspaso de dueño: a partir de aquí cada VpnConfig es de su fila,
@@ -1834,9 +1959,9 @@ on_startup (GApplication *app, gpointer user_data)
   GDBusConnection *bus = g_application_get_dbus_connection (app);
   g_clear_error (&error);
   if (bus == NULL)
-    startup_error = g_strdup ("Sin bus de sesión: el login no funcionará");
+    startup_error = g_strdup (_("No session bus: signing in will not work"));
   else if (!auth_service_start (bus, on_auth_request, NULL, &error))
-    startup_error = g_strdup_printf ("No se pudo publicar el login: %s",
+    startup_error = g_strdup_printf (_("Could not publish the sign-in service: %s"),
                                      error->message);
 }
 
@@ -1862,22 +1987,56 @@ on_shutdown (GApplication *app, gpointer user_data)
   g_clear_pointer (&startup_error, g_free);
 }
 
+/*
+ * Traducciones con gettext. En el código los textos están en inglés,
+ * envueltos en _("..."); gettext busca su traducción en los ficheros .mo
+ * (compilados desde po/es.po) del idioma que toque.
+ */
+static void
+setup_i18n (void)
+{
+  /* El idioma elegido en Preferencias manda sobre el del sistema.
+   * LANGUAGE es la variable que gettext mira antes que ninguna. */
+  g_autofree char *language = app_settings_get_string ("language");
+  if (language != NULL && g_strcmp0 (language, "system") != 0)
+    g_setenv ("LANGUAGE", language, TRUE);
+
+  /* "Usa el idioma y formatos del sistema" (sin esto, todo en inglés). */
+  setlocale (LC_ALL, "");
+
+  /* ¿Dónde están los .mo? Si ejecutamos desde la carpeta de compilación
+   * (build/), Meson los deja al lado, en build/po. Si la app está
+   * instalada, en LOCALEDIR. */
+  g_autofree char *exe = g_file_read_link ("/proc/self/exe", NULL);
+  g_autofree char *exe_dir = exe != NULL ? g_path_get_dirname (exe) : NULL;
+  g_autofree char *local = exe_dir != NULL
+    ? g_build_filename (exe_dir, "po", NULL) : NULL;
+  const char *dir = local != NULL && g_file_test (local, G_FILE_TEST_IS_DIR)
+    ? local : LOCALEDIR;
+
+  bindtextdomain (GETTEXT_PACKAGE, dir);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
+}
+
 int
 main (int argc, char *argv[])
 {
+  setup_i18n ();   /* lo primero: antes de crear ningún texto */
+
   AdwApplication *app = adw_application_new (VPNPORTAL_APP_ID,
                                              G_APPLICATION_DEFAULT_FLAGS);
 
-  /* La opción --background (y su explicación en --help). */
   /* Dónde buscar los recursos (style.css...). Por defecto se deduce del id
    * de la app; lo fijamos para que la versión demo (otro id) los encuentre. */
   g_application_set_resource_base_path (G_APPLICATION (app),
                                         "/io/github/GabRanalli/VPNPortal");
 
+  /* La opción --background (y su explicación en --help). */
   g_application_add_main_option (G_APPLICATION (app), "background", 'b',
                                  G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE,
-                                 "Arrancar oculta, solo con el icono de la "
-                                 "barra", NULL);
+                                 _("Start hidden, with just the top bar "
+                                   "icon"), NULL);
   g_signal_connect (app, "handle-local-options",
                     G_CALLBACK (on_handle_local_options), NULL);
   g_signal_connect (app, "startup",  G_CALLBACK (on_startup),  NULL);
@@ -1886,5 +2045,14 @@ main (int argc, char *argv[])
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref (app);
+
+  /* "Reiniciar" (p. ej. al cambiar de idioma): la app ya se ha cerrado
+   * del todo (VPN desconectada incluida); execv sustituye este proceso por
+   * uno nuevo del mismo programa, sin --background para que se vea. */
+  if (restarting) {
+    g_autofree char *exe = g_file_read_link ("/proc/self/exe", NULL);
+    if (exe != NULL)
+      execl (exe, exe, (char *) NULL);
+  }
   return status;
 }

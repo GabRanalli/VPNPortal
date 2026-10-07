@@ -1,0 +1,457 @@
+# Spanish translation of VPN Portal.
+# Traducción al español de VPN Portal.
+# This file is distributed under the same license as the vpnportal package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: vpnportal\n"
+"Report-Msgid-Bugs-To: https://github.com/GabRanalli/VPNPortal/issues\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Portal"
+msgstr "Portal"
+
+msgid "Contacting the portal…"
+msgstr "Contactando con el portal…"
+
+msgid "Waiting for you to sign in…"
+msgstr "Esperando a que inicies sesión…"
+
+msgid "Signed in; getting the configuration…"
+msgstr "Sesión iniciada; obteniendo la configuración…"
+
+msgid "Connecting to the gateway…"
+msgstr "Conectando a la gateway…"
+
+msgid "Connect"
+msgstr "Conectar"
+
+msgid "HIP report sent"
+msgstr "Informe HIP enviado"
+
+msgid "Connected"
+msgstr "Conectada"
+
+msgid "Tunnel established"
+msgstr "Túnel establecido"
+
+msgid "sudo asks for a password: the sudo rule is not installed"
+msgstr "sudo pide contraseña: falta instalar la regla de sudo"
+
+#, c-format
+msgid "gpclient has exited (code %d)"
+msgstr "gpclient ha terminado (código %d)"
+
+#, c-format
+msgid "gpclient was stopped by signal %d"
+msgstr "gpclient ha terminado por la señal %d"
+
+msgid "Disconnected"
+msgstr "Desconectada"
+
+msgid "Disconnect"
+msgstr "Desconectar"
+
+msgid "The connection failed. The details are in the full log."
+msgstr "La conexión ha fallado. Los detalles están en el registro completo."
+
+msgid "The tunnel was lost; gpclient is reconnecting…"
+msgstr "Se ha perdido el túnel; gpclient está reconectando…"
+
+msgid "Not responding to Ctrl+C; sending SIGTERM"
+msgstr "No responde a Ctrl+C; enviando SIGTERM"
+
+#, c-format
+msgid "Running: %s"
+msgstr "Lanzando: %s"
+
+#, c-format
+msgid "Could not run sudo: %s"
+msgstr "No se pudo lanzar sudo: %s"
+
+msgid "Could not start gpclient"
+msgstr "No se pudo lanzar gpclient"
+
+msgid "Server approved"
+msgstr "Servidor aprobado"
+
+msgid "Cancelled"
+msgstr "Cancelada"
+
+msgid "Not approved (was the password dialog cancelled?)"
+msgstr "No se ha aprobado (¿se canceló la contraseña?)"
+
+msgid "The server was not approved"
+msgstr "No se ha aprobado el servidor"
+
+#, c-format
+msgid ""
+"First connection to %s: it has to be approved once (you will be asked "
+"for your password)"
+msgstr ""
+"Primera conexión a %s: hay que aprobarlo una vez (te pedirá la "
+"contraseña)"
+
+msgid "Approving the server (asks for your password, only this time)…"
+msgstr "Aprobando el servidor (te pedirá la contraseña, solo esta vez)…"
+
+#, c-format
+msgid "Could not run pkexec: %s"
+msgstr "No se pudo lanzar pkexec: %s"
+
+msgid "Could not ask for the password"
+msgstr "No se pudo pedir la contraseña"
+
+msgid "Starting the connection"
+msgstr "Iniciando la conexión"
+
+#, c-format
+msgid "There is already an active VPN tunnel (%s). Disconnect it first."
+msgstr "Ya hay un túnel VPN activo (%s). Desconéctalo antes."
+
+msgid "Another VPN is connected outside the app. Disconnect it first."
+msgstr "Ya hay otra VPN conectada fuera de la app. Desconéctala antes."
+
+msgid "Cancelling…"
+msgstr "Cancelando…"
+
+msgid "Disconnecting (Ctrl+C)…"
+msgstr "Desconectando (Ctrl+C)…"
+
+msgid "Disconnecting…"
+msgstr "Desconectando…"
+
+msgid "Connecting…"
+msgstr "Conectando…"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Theme"
+msgstr "Tema"
+
+msgid "Not connected"
+msgstr "Sin conexión"
+
+#, c-format
+msgid "Disconnect %s"
+msgstr "Desconectar %s"
+
+#, c-format
+msgid "Switch to %s"
+msgstr "Cambiar a %s"
+
+msgid "Switch"
+msgstr "Cambiar"
+
+msgid "Add a VPN from the window"
+msgstr "Añade una VPN desde la ventana"
+
+#, c-format
+msgid "Connect %s"
+msgstr "Conectar %s"
+
+msgid "Show window"
+msgstr "Mostrar ventana"
+
+msgid "Quit"
+msgstr "Salir"
+
+msgid "Signing in…"
+msgstr "Iniciando sesión…"
+
+#, c-format
+msgid "Sign in · %s"
+msgstr "Iniciar sesión · %s"
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Light or dark, as GNOME is set"
+msgstr "Claro u oscuro, como tengas GNOME"
+
+msgid "White"
+msgstr "Blanco"
+
+msgid "Light and clean"
+msgstr "Claro y limpio"
+
+msgid "Black"
+msgstr "Negro"
+
+msgid "Dark, pure black"
+msgstr "Oscuro, de negro puro"
+
+msgid "Neon blue"
+msgstr "Azul neón"
+
+msgid "Dark, with glowing cyan borders and buttons"
+msgstr "Oscuro, con bordes y botones cian que brillan"
+
+msgid "Red"
+msgstr "Rojo"
+
+msgid "Dark, in maroon and red tones"
+msgstr "Oscuro, en tonos granate y rojo"
+
+msgid "Sky, glass and glossy buttons"
+msgstr "Cielo, cristal y botones con brillo"
+
+msgid "Your theme"
+msgstr "Tema propio"
+
+#, c-format
+msgid "Error in the theme's CSS, line %zu: %s"
+msgstr "Error en el CSS del tema, línea %zu: %s"
+
+msgid "A theme has to be a .css file"
+msgstr "Un tema tiene que ser un fichero .css"
+
+msgid "That theme is not one of your themes"
+msgstr "Ese tema no es un tema propio"
+
+#, c-format
+msgid "Could not create %s: %s"
+msgstr "No se pudo crear %s: %s"
+
+msgid "Activity"
+msgstr "Actividad"
+
+#, c-format
+msgid "Activity · %s"
+msgstr "Actividad · %s"
+
+#, c-format
+msgid "» Switching to %s: this one is disconnected first…"
+msgstr "» Cambiando a %s: primero se desconecta esta…"
+
+#, c-format
+msgid "Switch to %s?"
+msgstr "¿Cambiar a %s?"
+
+#, c-format
+msgid "%s will be disconnected and then %s will be connected."
+msgstr "Se desconectará %s y después se conectará %s."
+
+msgid "» Signing in to the gateway…"
+msgstr "» Iniciando sesión en la gateway…"
+
+msgid "» Signing in…"
+msgstr "» Iniciando sesión…"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Delete this VPN?"
+msgstr "¿Eliminar esta VPN?"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+#, c-format
+msgid "“%s” will be removed from the list."
+msgstr "Se borrará «%s» de la lista."
+
+msgid "Edit VPN"
+msgstr "Editar VPN"
+
+msgid "New VPN"
+msgstr "Nueva VPN"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid ""
+"The first time you connect to a new server, you will be asked for the "
+"administrator password to approve it."
+msgstr ""
+"La primera vez que conectes a un servidor nuevo te pedirá la "
+"contraseña de administrador para aprobarlo."
+
+msgid "Gateway (empty = automatic)"
+msgstr "Gateway (vacío = automática)"
+
+msgid "User (optional)"
+msgstr "Usuario (opcional)"
+
+msgid "Send HIP report"
+msgstr "Enviar informe HIP"
+
+msgid "Only if your organization requires it"
+msgstr "Solo si tu organización lo exige"
+
+msgid "Delete VPN"
+msgstr "Eliminar VPN"
+
+msgid "No VPNs"
+msgstr "Sin VPN"
+
+msgid "Add your first GlobalProtect VPN."
+msgstr "Añade tu primera VPN de GlobalProtect."
+
+msgid "Add VPN"
+msgstr "Añadir VPN"
+
+msgid "Log copied"
+msgstr "Registro copiado"
+
+msgid "Copy all"
+msgstr "Copiar todo"
+
+msgid "Full log"
+msgstr "Registro completo"
+
+msgid "No activity yet"
+msgstr "Aún no hay actividad"
+
+msgid "Connections"
+msgstr "Conexiones"
+
+msgid "Preferences"
+msgstr "Preferencias"
+
+msgid "VPN Portal keeps running"
+msgstr "VPN Portal sigue en marcha"
+
+msgid ""
+"When you close the window, the app stays in the top bar so you can "
+"connect and disconnect from its icon. To close it completely, use "
+"“Quit” in that menu or press Ctrl+Q."
+msgstr ""
+"Al cerrar la ventana, la app se queda en la barra superior para que "
+"puedas conectar y desconectar desde su icono. Para cerrarla del todo, "
+"usa «Salir» en ese menú o pulsa Ctrl+Q."
+
+msgid "Quit completely"
+msgstr "Salir del todo"
+
+msgid "Got it"
+msgstr "Entendido"
+
+msgid "The theme has CSS errors (details in the log)"
+msgstr "El tema tiene errores de CSS (detalles en el registro)"
+
+msgid "Theme removed"
+msgstr "Tema quitado"
+
+#, c-format
+msgid "Remove the theme “%s”?"
+msgstr "¿Quitar el tema «%s»?"
+
+msgid "Remove"
+msgstr "Quitar"
+
+msgid "Its file will be deleted from the themes folder."
+msgstr "Se borrará su fichero de la carpeta de temas."
+
+msgid "Remove theme"
+msgstr "Quitar tema"
+
+msgid "Theme added"
+msgstr "Tema añadido"
+
+msgid "Themes (.css)"
+msgstr "Temas (.css)"
+
+msgid "Add theme"
+msgstr "Añadir tema"
+
+msgid "Your themes"
+msgstr "Temas propios"
+
+msgid ""
+"A theme is a .css file. Add yours and it will show up above; if you "
+"edit the one in use, it reloads by itself when you save. <a "
+"href=\"https://github.com/GabRanalli/VPNPortal/blob/main/docs/THEMES.md\">How to make a theme</a>"
+msgstr ""
+"Un tema es un fichero .css. Añade el tuyo y aparecerá arriba; si "
+"editas el que tienes puesto, se recarga solo al guardar. <a "
+"href=\"https://github.com/GabRanalli/VPNPortal/blob/main/docs/THEMES.es.md\">Cómo hacer un tema</a>"
+
+msgid "Open the themes folder"
+msgstr "Abrir la carpeta de temas"
+
+msgid "Add theme…"
+msgstr "Añadir tema…"
+
+msgid "Restart now?"
+msgstr "¿Reiniciar ahora?"
+
+msgid "Restart"
+msgstr "Reiniciar"
+
+#, c-format
+msgid "Restarting will disconnect %s."
+msgstr "Al reiniciar se desconectará %s."
+
+msgid "The language will change when the app restarts"
+msgstr "El idioma cambiará al reiniciar la app"
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "Automatic (system language)"
+msgstr "Automático (el del sistema)"
+
+msgid "Applied right away."
+msgstr "Se aplica al momento."
+
+msgid "Appearance"
+msgstr "Apariencia"
+
+msgid "Could not forget the sessions"
+msgstr "No se pudieron olvidar las sesiones"
+
+msgid "» Saved sign-in sessions forgotten"
+msgstr "» Sesiones de inicio de sesión olvidadas"
+
+msgid "Sessions forgotten"
+msgstr "Sesiones olvidadas"
+
+msgid "Finish or cancel the sign-in first"
+msgstr "Termina o cancela el inicio de sesión antes"
+
+msgid "Forget saved sessions…"
+msgstr "Olvidar sesiones guardadas…"
+
+msgid "Forget saved sessions?"
+msgstr "¿Olvidar las sesiones guardadas?"
+
+msgid "Forget"
+msgstr "Olvidar"
+
+msgid ""
+"Next time you connect you will have to sign in again (and enter the "
+"code from your phone, if you use one) on every VPN. Your VPNs are not "
+"deleted."
+msgstr ""
+"La próxima vez que conectes tendrás que volver a iniciar sesión (y, si "
+"lo usas, poner el código del móvil) en todas las VPN. Tus VPN "
+"configuradas no se borran."
+
+msgid "Start when I log in"
+msgstr "Arrancar al iniciar sesión"
+
+msgid "Main menu"
+msgstr "Menú principal"
+
+#, c-format
+msgid "Could not read the configuration: %s"
+msgstr "No se pudo leer la configuración: %s"
+
+msgid "No session bus: signing in will not work"
+msgstr "Sin bus de sesión: el login no funcionará"
+
+#, c-format
+msgid "Could not publish the sign-in service: %s"
+msgstr "No se pudo publicar el login: %s"
+
+msgid "Start hidden, with just the top bar icon"
+msgstr "Arrancar oculta, solo con el icono de la barra"

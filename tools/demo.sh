@@ -101,5 +101,16 @@ gcc -std=c11 -O1 -o "$DEMO/vpnportal-demo" \
   -DWEBKIT_DIR="\"$DEMO/webkit\"" \
   $(pkg-config --cflags --libs libadwaita-1 webkitgtk-6.0)
 
+# Las traducciones: cada po/<idioma>.po -> build-demo/po/<idioma>/LC_MESSAGES
+# (la app las busca en "po" junto al ejecutable). Necesita msgfmt (gettext).
+if command -v msgfmt > /dev/null; then
+  for lang in $(grep -v '^#' "$ROOT/po/LINGUAS"); do
+    mkdir -p "$DEMO/po/$lang/LC_MESSAGES"
+    msgfmt -o "$DEMO/po/$lang/LC_MESSAGES/vpnportal.mo" "$ROOT/po/$lang.po"
+  done
+else
+  echo "Aviso: falta msgfmt (sudo apt install gettext): la demo saldrá en inglés."
+fi
+
 echo "Arrancando VPN Portal (demo)…"
 PATH="$DEMO/bin:$PATH" exec "$DEMO/vpnportal-demo" "$@"

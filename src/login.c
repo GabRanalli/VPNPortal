@@ -18,6 +18,7 @@
  */
 #include "login.h"
 
+#include <glib/gi18n.h>
 #include <string.h>
 #include <webkit/webkit.h>
 
@@ -384,7 +385,7 @@ static GtkWidget *
 build_waiting_page (void)
 {
   GtkWidget *status = adw_status_page_new ();
-  adw_status_page_set_title (ADW_STATUS_PAGE (status), "Iniciando sesión…");
+  adw_status_page_set_title (ADW_STATUS_PAGE (status), _("Signing in…"));
   /* El "paintable" necesita saber en qué widget está para animarse. */
   g_autoptr (AdwSpinnerPaintable) spinner = adw_spinner_paintable_new (status);
   adw_status_page_set_paintable (ADW_STATUS_PAGE (status),
@@ -428,7 +429,7 @@ login_dialog_run (GtkWidget *parent, const char *title, AuthRequest *request)
   adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), login->stack);
 
   login->dialog = adw_dialog_new ();
-  g_autofree char *dialog_title = g_strdup_printf ("Iniciar sesión · %s",
+  g_autofree char *dialog_title = g_strdup_printf (_("Sign in · %s"),
                                                    title);
   adw_dialog_set_title (login->dialog, dialog_title);
   adw_dialog_set_content_width (login->dialog, 560);

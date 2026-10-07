@@ -39,42 +39,42 @@ valid_user() { [[ "$1" =~ ^[A-Za-z0-9._@+][A-Za-z0-9._@+-]{0,127}$ ]]; }
 is_approved() { [[ -f "$ALLOWLIST" ]] && grep -qixF -- "$1" "$ALLOWLIST"; }
 
 cmd_allow() {
-  [[ $# -ge 1 ]] || die "uso: allow <host>..."
+  [[ $# -ge 1 ]] || die "usage: allow <host>..."
   # Primero se validan TODOS; si alguno falla, no se escribe nada.
   local host
   for host in "$@"; do
-    valid_host "$host" || die "host no válido: $host"
+    valid_host "$host" || die "invalid host: $host"
   done
 
   mkdir -p "$(dirname "$ALLOWLIST")"
   for host in "$@"; do
     host="${host,,}"   # a minúsculas
     is_approved "$host" || echo "$host" >> "$ALLOWLIST"
-    echo "Aprobado: $host"
+    echo "Approved: $host"
   done
 }
 
 cmd_connect() {
-  [[ $# -ge 1 ]] || die "uso: connect <portal> [--gateway H] [--user U] [--hip]"
+  [[ $# -ge 1 ]] || die "usage: connect <portal> [--gateway H] [--user U] [--hip]"
   local portal="$1"
   shift
-  valid_host "$portal" || die "portal no válido: $portal"
-  is_approved "$portal" || die "portal no aprobado: $portal"
+  valid_host "$portal" || die "invalid portal: $portal"
+  is_approved "$portal" || die "portal not approved: $portal"
 
   local args=() gateway=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --gateway)
-        [[ $# -ge 2 ]] || die "falta el valor de --gateway"
-        valid_host "$2" || die "gateway no válida: $2"
-        is_approved "$2" || die "gateway no aprobada: $2"
+        [[ $# -ge 2 ]] || die "missing value for --gateway"
+        valid_host "$2" || die "invalid gateway: $2"
+        is_approved "$2" || die "gateway not approved: $2"
         gateway="$2"
         args+=("--gateway=$2")
         shift 2
         ;;
       --user)
-        [[ $# -ge 2 ]] || die "falta el valor de --user"
-        valid_user "$2" || die "usuario no válido: $2"
+        [[ $# -ge 2 ]] || die "missing value for --user"
+        valid_user "$2" || die "invalid user: $2"
         args+=("--user=$2")
         shift 2
         ;;
@@ -83,7 +83,7 @@ cmd_connect() {
         shift
         ;;
       *)
-        die "opción no permitida: $1"
+        die "option not allowed: $1"
         ;;
     esac
   done
@@ -107,5 +107,5 @@ cmd_connect() {
 case "${1:-}" in
   connect) shift; cmd_connect "$@" ;;
   allow)   shift; cmd_allow "$@" ;;
-  *)       die "uso: vpnportal-helper connect|allow ..." ;;
+  *)       die "usage: vpnportal-helper connect|allow ..." ;;
 esac

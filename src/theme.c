@@ -8,6 +8,7 @@
  */
 #include "theme.h"
 
+#include <glib/gi18n.h>
 #include <string.h>
 
 #include "config.h"
@@ -23,17 +24,18 @@ static const struct {
   AdwColorScheme  scheme;
   const char     *resource;
 } builtin_themes[] = {
-  { "system", "Sistema", "Claro u oscuro, como tengas GNOME",
+  /* N_(): marcados para traducir; se traducen al copiarlos en theme_init. */
+  { "system", N_("System"), N_("Light or dark, as GNOME is set"),
     ADW_COLOR_SCHEME_DEFAULT, NULL },
-  { "white", "Blanco", "Claro y limpio",
+  { "white", N_("White"), N_("Light and clean"),
     ADW_COLOR_SCHEME_FORCE_LIGHT, "white" },
-  { "black", "Negro", "Oscuro, de negro puro",
+  { "black", N_("Black"), N_("Dark, pure black"),
     ADW_COLOR_SCHEME_FORCE_DARK, "black" },
-  { "neon", "Azul neón", "Oscuro, con bordes y botones cian que brillan",
+  { "neon", N_("Neon blue"), N_("Dark, with glowing cyan borders and buttons"),
     ADW_COLOR_SCHEME_FORCE_DARK, "neon" },
-  { "red", "Rojo", "Oscuro, en tonos granate y rojo",
+  { "red", N_("Red"), N_("Dark, in maroon and red tones"),
     ADW_COLOR_SCHEME_FORCE_DARK, "red" },
-  { "aero", "Frutiger Aero", "Cielo, cristal y botones con brillo",
+  { "aero", "Frutiger Aero", N_("Sky, glass and glossy buttons"),
     ADW_COLOR_SCHEME_FORCE_LIGHT, "aero" },
 };
 
@@ -157,7 +159,7 @@ theme_reload_user_themes (void)
 
     theme->id = g_strconcat (USER_PREFIX, base, NULL);
     theme->name = g_strdup (base);
-    theme->description = g_strdup ("Tema propio");
+    theme->description = g_strdup (_("Your theme"));
     theme->scheme = ADW_COLOR_SCHEME_DEFAULT;
     theme->file = g_build_filename (dir_path, filename, NULL);
     theme->swatch_class = g_strdup_printf ("user-%u", i);
@@ -195,8 +197,8 @@ on_parsing_error (GtkCssProvider *css_provider, GtkCssSection *section,
 {
   (void) css_provider; (void) user_data;
   const GtkCssLocation *location = gtk_css_section_get_start_location (section);
-  g_autofree char *message = g_strdup_printf ("Error en el CSS del tema, "
-                                              "línea %zu: %s",
+  g_autofree char *message = g_strdup_printf (_("Error in the theme's CSS, "
+                                                "line %zu: %s"),
                                               location->lines + 1,
                                               error->message);
   if (problem_func != NULL)
@@ -265,8 +267,8 @@ theme_init (ThemeMessageFunc on_problem, gpointer user_data)
   for (guint i = 0; i < G_N_ELEMENTS (builtin_themes); i++) {
     ThemeInfo *theme = g_new0 (ThemeInfo, 1);
     theme->id = g_strdup (builtin_themes[i].id);
-    theme->name = g_strdup (builtin_themes[i].name);
-    theme->description = g_strdup (builtin_themes[i].description);
+    theme->name = g_strdup (_(builtin_themes[i].name));
+    theme->description = g_strdup (_(builtin_themes[i].description));
     theme->scheme = builtin_themes[i].scheme;
     theme->resource = g_strdup (builtin_themes[i].resource);
     theme->swatch_class = g_strdup (builtin_themes[i].id);
@@ -333,7 +335,7 @@ theme_install (GFile *css, GError **error)
   g_autofree char *basename = g_file_get_basename (css);
   if (basename == NULL || !g_str_has_suffix (basename, ".css")) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_FILENAME,
-                 "Un tema tiene que ser un fichero .css");
+                 _("A theme has to be a .css file"));
     return NULL;
   }
 
@@ -357,7 +359,7 @@ theme_remove (const char *id, GError **error)
   ThemeInfo *theme = find_theme (id);
   if (theme == NULL || theme->file == NULL) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                 "Ese tema no es un tema propio");
+                 _("That theme is not one of your themes"));
     return FALSE;
   }
 
