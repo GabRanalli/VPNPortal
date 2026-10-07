@@ -21,13 +21,20 @@ config_path (void)
 #endif
 }
 
-/* settings.ini va en la misma carpeta que vpns.ini (así la demo, que
- * cambia la ruta de vpns.ini, tampoco toca tus ajustes). */
+/* La carpeta donde está vpns.ini. settings.ini (y la carpeta de temas)
+ * van ahí también: así la demo, que cambia la ruta de vpns.ini, tampoco
+ * toca tus ajustes. */
+char *
+app_settings_dir (void)
+{
+  g_autofree char *vpns = config_path ();
+  return g_path_get_dirname (vpns);
+}
+
 static char *
 settings_path (void)
 {
-  g_autofree char *vpns = config_path ();
-  g_autofree char *dir = g_path_get_dirname (vpns);
+  g_autofree char *dir = app_settings_dir ();
   return g_build_filename (dir, "settings.ini", NULL);
 }
 

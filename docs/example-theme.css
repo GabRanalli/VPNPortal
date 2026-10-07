@@ -1,0 +1,55 @@
+/* VPN Portal theme
+ * name: Atardecer
+ * description: Morados y naranjas, de noche
+ * base: dark
+ * swatch: #2b1838 #ff8a3d
+ */
+
+/*
+ * Plantilla de tema para VPN Portal. Cópiala, cámbiale el nombre del
+ * fichero y los datos de arriba, y juega con los colores. Ver
+ * docs/THEMES.md.
+ *
+ * Theme template for VPN Portal. Copy it, rename the file, change the
+ * details above and play with the colors. See docs/THEMES.md.
+ */
+
+/* 1. Los colores de libadwaita / libadwaita's color variables. */
+:root {
+  /* Acento: botones principales, casillas, enlaces / accent color. */
+  --accent-bg-color: #ff8a3d;
+  --accent-fg-color: #2b1200;
+  --accent-color: #ffb07a;
+  /* (Ubuntu's libadwaita also reads these.) */
+  --yaru-accent-bg-color: #ff8a3d;
+  --yaru-accent-color: #ffb07a;
+
+  /* Ventana, listas, barra de título, tarjetas, diálogos y menús. */
+  --window-bg-color: #1d1028;
+  --window-fg-color: #fbeaff;
+  --view-bg-color: #241433;
+  --view-fg-color: #fbeaff;
+  --headerbar-bg-color: #21122e;
+  --headerbar-backdrop-color: #1d1028;
+  --headerbar-fg-color: #fbeaff;
+  --card-bg-color: rgba(255, 160, 220, 0.06);
+  --card-fg-color: #fbeaff;
+  --dialog-bg-color: #22132f;
+  --popover-bg-color: #261537;
+  --border-color: rgba(255, 170, 120, 0.2);
+}
+
+/* 2. Extras opcionales / optional extras. */
+
+/* La ventana principal tiene la clase "vpnportal-main". */
+window.vpnportal-main {
+  background-image: linear-gradient(to bottom, #2b1838 0%, #1d1028 55%, #3a1a2a 100%);
+}
+
+/* Botones principales (Conectar) y de peligro (Desconectar). */
+button.suggested-action {
+  background-image: linear-gradient(to bottom, #ffa95e, #ff7a2a);
+}
+button.destructive-action {
+  background-image: linear-gradient(to bottom, #ff6b8b, #e0365c);
+}

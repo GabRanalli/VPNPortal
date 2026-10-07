@@ -1117,6 +1117,33 @@ on_close_request (GtkWindow *window, gpointer user_data)
 /* Preferencias (temas)                                             */
 /* ---------------------------------------------------------------- */
 
+static void show_toast (const char *message);
+
+static AdwDialog *prefs_dialog;   /* Preferencias, si está abierto */
+static GtkWidget *themes_group;   /* su grupo "Tema" */
+static GPtrArray *theme_rows;     /* las filas de ese grupo (sin "ref") */
+
+/* Un aviso breve: dentro de Preferencias si está abierto (si no, quedaría
+ * tapado por el diálogo); si no, en la ventana. */
+static void
+prefs_toast (const char *message)
+{
+  if (prefs_dialog != NULL)
+    adw_preferences_dialog_add_toast (ADW_PREFERENCES_DIALOG (prefs_dialog),
+                                      adw_toast_new (message));
+  else
+    show_toast (message);
+}
+
+/* Errores en el CSS de un tema propio (nos avisa theme.c). */
+static void
+on_theme_problem (const char *message, gpointer user_data)
+{
+  (void) user_data;
+  append_log ("Tema", message);
+  prefs_toast ("El tema tiene errores de CSS (detalles en el registro)");
+}
+
 /* La acción "app.theme": su ESTADO es el id del tema actual ("aero"...).
  * Pedir otro estado = cambiar de tema. Los botones de radio de
  * Preferencias están enganchados a ella: GTK marca solo el que coincide
@@ -1130,36 +1157,106 @@ on_theme_change_state (GSimpleAction *action, GVariant *value,
   g_simple_action_set_state (action, g_variant_new_string (theme_get_current ()));
 }
 
+/* Cambiar de tema "desde el código" (y que los radios se enteren). */
 static void
-on_preferences_action (GSimpleAction *action, GVariant *parameter,
-                       gpointer user_data)
+select_theme (const char *id)
 {
-  (void) action; (void) parameter; (void) user_data;
+  g_action_group_change_action_state (G_ACTION_GROUP (g_application_get_default ()),
+                                      "theme", g_variant_new_string (id));
+}
 
-  GtkWidget *group = adw_preferences_group_new ();
-  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group), "Tema");
-  adw_preferences_group_set_description (ADW_PREFERENCES_GROUP (group),
-                                         "Se aplica al momento.");
+static void fill_theme_rows (void);
 
-  guint n_themes;
-  const ThemeInfo *themes = theme_list (&n_themes);
+static void
+on_remove_theme_confirmed (AdwAlertDialog *alert, const char *response,
+                           gpointer user_data)
+{
+  (void) alert; (void) response;
+  const char *id = user_data;
+  g_autoptr (GError) error = NULL;
+
+  if (!theme_remove (id, &error)) {
+    prefs_toast (error->message);
+    return;
+  }
+  select_theme (theme_get_current ());   /* por si era el actual */
+  fill_theme_rows ();
+  prefs_toast ("Tema quitado");
+}
+
+static void
+on_remove_theme_clicked (GtkButton *button, gpointer user_data)
+{
+  (void) button;
+  const ThemeInfo *theme = user_data;
+
+  AdwDialog *alert = adw_alert_dialog_new (NULL, NULL);
+  adw_alert_dialog_format_heading (ADW_ALERT_DIALOG (alert),
+                                   "¿Quitar el tema «%s»?", theme->name);
+  adw_alert_dialog_format_body (ADW_ALERT_DIALOG (alert),
+                                "Se borrará su fichero de la carpeta de "
+                                "temas.");
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
+                                  "cancel", "Cancelar",
+                                  "remove", "Quitar",
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "remove",
+                                            ADW_RESPONSE_DESTRUCTIVE);
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (alert), "cancel");
+  /* El id se copia y se libera con el diálogo: la lista de temas puede
+   * rehacerse mientras tanto. */
+  char *id = g_strdup (theme->id);
+  g_object_set_data_full (G_OBJECT (alert), "theme-id", id, g_free);
+  g_signal_connect (alert, "response::remove",
+                    G_CALLBACK (on_remove_theme_confirmed), id);
+  adw_dialog_present (alert, GTK_WIDGET (prefs_dialog));
+}
+
+/* (Re)hace las filas del grupo "Tema": los de serie y los propios. */
+static void
+fill_theme_rows (void)
+{
+  if (themes_group == NULL)
+    return;
+
+  for (guint i = 0; i < theme_rows->len; i++)
+    adw_preferences_group_remove (ADW_PREFERENCES_GROUP (themes_group),
+                                  g_ptr_array_index (theme_rows, i));
+  g_ptr_array_set_size (theme_rows, 0);
+
+  theme_reload_user_themes ();   /* por si has copiado alguno a mano */
+  GPtrArray *themes = theme_list ();
   GtkWidget *first_check = NULL;
 
-  for (guint i = 0; i < n_themes; i++) {
-    const ThemeInfo *theme = &themes[i];
+  for (guint i = 0; i < themes->len; i++) {
+    const ThemeInfo *theme = g_ptr_array_index (themes, i);
 
     GtkWidget *row = adw_action_row_new ();
     adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
     adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), theme->name);
     adw_action_row_set_subtitle (ADW_ACTION_ROW (row), theme->description);
 
-    /* La muestra de color: una caja vacía pintada desde style.css con
-     * las clases "theme-swatch" y el id del tema. */
+    /* La muestra de color: una caja vacía pintada por CSS con las clases
+     * "theme-swatch" y la propia del tema. */
     GtkWidget *swatch = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_widget_add_css_class (swatch, "theme-swatch");
-    gtk_widget_add_css_class (swatch, theme->id);
+    gtk_widget_add_css_class (swatch, theme->swatch_class);
     gtk_widget_set_valign (swatch, GTK_ALIGN_CENTER);
     adw_action_row_add_prefix (ADW_ACTION_ROW (row), swatch);
+
+    /* Los temas propios llevan una papelera para quitarlos. */
+    if (theme->file != NULL) {
+      GtkWidget *remove = gtk_button_new_from_icon_name ("user-trash-symbolic");
+      gtk_widget_add_css_class (remove, "flat");
+      gtk_widget_set_valign (remove, GTK_ALIGN_CENTER);
+      gtk_widget_set_tooltip_text (remove, "Quitar tema");
+      gtk_accessible_update_property (GTK_ACCESSIBLE (remove),
+                                      GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                      "Quitar tema", -1);
+      g_signal_connect (remove, "clicked",
+                        G_CALLBACK (on_remove_theme_clicked), (gpointer) theme);
+      adw_action_row_add_suffix (ADW_ACTION_ROW (row), remove);
+    }
 
     /* Botón de radio enganchado a "app.theme" con su id como "target":
      * se ve marcado si el estado de la acción es ese id. Van en un mismo
@@ -1178,20 +1275,134 @@ on_preferences_action (GSimpleAction *action, GVariant *parameter,
 
     /* Pulsar en cualquier parte de la fila = pulsar el botón de radio. */
     adw_action_row_set_activatable_widget (ADW_ACTION_ROW (row), check);
-    adw_preferences_group_add (ADW_PREFERENCES_GROUP (group), row);
+    adw_preferences_group_add (ADW_PREFERENCES_GROUP (themes_group), row);
+    g_ptr_array_add (theme_rows, row);
   }
+}
+
+/* Elegiste un .css en el selector de ficheros. */
+static void
+on_theme_file_chosen (GObject *source, GAsyncResult *result,
+                      gpointer user_data)
+{
+  (void) user_data;
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GFile) file = gtk_file_dialog_open_finish (GTK_FILE_DIALOG (source),
+                                                        result, &error);
+  if (file == NULL)
+    return;   /* cancelado */
+
+  g_autofree char *id = theme_install (file, &error);
+  if (id == NULL) {
+    prefs_toast (error->message);
+    return;
+  }
+  fill_theme_rows ();
+  select_theme (id);
+  prefs_toast ("Tema añadido");
+}
+
+static void
+on_add_theme_clicked (GtkButton *button, gpointer user_data)
+{
+  (void) button; (void) user_data;
+
+  /* El selector de ficheros de GNOME, mostrando solo los .css. */
+  g_autoptr (GtkFileFilter) filter = gtk_file_filter_new ();
+  gtk_file_filter_set_name (filter, "Temas (.css)");
+  gtk_file_filter_add_suffix (filter, "css");
+  g_autoptr (GListStore) filters = g_list_store_new (GTK_TYPE_FILE_FILTER);
+  g_list_store_append (filters, filter);
+
+  g_autoptr (GtkFileDialog) chooser = gtk_file_dialog_new ();
+  gtk_file_dialog_set_title (chooser, "Añadir tema");
+  gtk_file_dialog_set_filters (chooser, G_LIST_MODEL (filters));
+  gtk_file_dialog_open (chooser, main_window, NULL, on_theme_file_chosen, NULL);
+}
+
+static void
+on_open_themes_folder_clicked (GtkButton *button, gpointer user_data)
+{
+  (void) button; (void) user_data;
+  g_autofree char *dir = theme_user_dir ();
+  g_autoptr (GFile) folder = g_file_new_for_path (dir);
+
+  /* GtkFileLauncher abre la carpeta con la app de ficheros de GNOME. */
+  g_autoptr (GtkFileLauncher) launcher = gtk_file_launcher_new (folder);
+  gtk_file_launcher_launch (launcher, main_window, NULL, NULL, NULL);
+}
+
+/* El grupo "Temas propios": explicación + botones. */
+static GtkWidget *
+build_user_themes_group (void)
+{
+  GtkWidget *group = adw_preferences_group_new ();
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group),
+                                   "Temas propios");
+  adw_preferences_group_set_description (
+    ADW_PREFERENCES_GROUP (group),
+    "Un tema es un fichero .css. Añade el tuyo y aparecerá arriba; si "
+    "editas el que tienes puesto, se recarga solo al guardar. "
+    "<a href=\"https://github.com/GabRanalli/VPNPortal/blob/main/docs/THEMES.md\">"
+    "Cómo hacer un tema</a>");
+
+  GtkWidget *folder = gtk_button_new_from_icon_name ("folder-open-symbolic");
+  gtk_widget_add_css_class (folder, "flat");
+  gtk_widget_set_tooltip_text (folder, "Abrir la carpeta de temas");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (folder),
+                                  GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  "Abrir la carpeta de temas", -1);
+  g_signal_connect (folder, "clicked",
+                    G_CALLBACK (on_open_themes_folder_clicked), NULL);
+
+  GtkWidget *add = gtk_button_new_with_label ("Añadir tema…");
+  g_signal_connect (add, "clicked", G_CALLBACK (on_add_theme_clicked), NULL);
+
+  GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
+  gtk_widget_set_valign (buttons, GTK_ALIGN_CENTER);
+  gtk_box_append (GTK_BOX (buttons), folder);
+  gtk_box_append (GTK_BOX (buttons), add);
+  adw_preferences_group_set_header_suffix (ADW_PREFERENCES_GROUP (group),
+                                           buttons);
+  return group;
+}
+
+static void
+on_preferences_action (GSimpleAction *action, GVariant *parameter,
+                       gpointer user_data)
+{
+  (void) action; (void) parameter; (void) user_data;
+
+  if (prefs_dialog != NULL)
+    return;   /* ya está abierto */
+
+  themes_group = adw_preferences_group_new ();
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (themes_group),
+                                   "Tema");
+  adw_preferences_group_set_description (ADW_PREFERENCES_GROUP (themes_group),
+                                         "Se aplica al momento.");
+  g_object_add_weak_pointer (G_OBJECT (themes_group),
+                             (gpointer *) &themes_group);
+  if (theme_rows == NULL)
+    theme_rows = g_ptr_array_new ();
+  g_ptr_array_set_size (theme_rows, 0);
+  fill_theme_rows ();
 
   GtkWidget *page = adw_preferences_page_new ();
   adw_preferences_page_set_title (ADW_PREFERENCES_PAGE (page), "Apariencia");
   adw_preferences_page_set_icon_name (ADW_PREFERENCES_PAGE (page),
                                       "applications-graphics-symbolic");
   adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
-                            ADW_PREFERENCES_GROUP (group));
+                            ADW_PREFERENCES_GROUP (themes_group));
+  adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
+                            ADW_PREFERENCES_GROUP (build_user_themes_group ()));
 
-  AdwDialog *dialog = adw_preferences_dialog_new ();
-  adw_preferences_dialog_add (ADW_PREFERENCES_DIALOG (dialog),
+  prefs_dialog = adw_preferences_dialog_new ();
+  g_object_add_weak_pointer (G_OBJECT (prefs_dialog),
+                             (gpointer *) &prefs_dialog);
+  adw_preferences_dialog_add (ADW_PREFERENCES_DIALOG (prefs_dialog),
                               ADW_PREFERENCES_PAGE (page));
-  adw_dialog_present (dialog, GTK_WIDGET (main_window));
+  adw_dialog_present (prefs_dialog, GTK_WIDGET (main_window));
 }
 
 /* ---------------------------------------------------------------- */
@@ -1602,7 +1813,7 @@ on_startup (GApplication *app, gpointer user_data)
                                                             NULL });
 
   /* El tema guardado (o "Sistema"), y la acción reflejándolo. */
-  theme_init ();
+  theme_init (on_theme_problem, NULL);
   g_simple_action_set_state (
     G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (app), "theme")),
     g_variant_new_string (theme_get_current ()));

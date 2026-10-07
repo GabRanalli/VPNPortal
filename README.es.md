@@ -21,6 +21,8 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
   `gpclient` a un clic (y un botón para copiarlo).
 - **Temas**: Sistema, Blanco, Negro, Azul neón, Rojo y Frutiger Aero
   (cielo, cristal, burbujas y botones con brillo), en Preferencias (Ctrl+,).
+  También puedes **hacer el tuyo**: un tema es solo un fichero `.css`, ver
+  [docs/THEMES.es.md](docs/THEMES.es.md).
 - **Conectar sin contraseña**, sin regalar root (ver [Seguridad](#seguridad)).
 
 > **Estado:** en sus primeras versiones, pero ya sirve para el día a día. La

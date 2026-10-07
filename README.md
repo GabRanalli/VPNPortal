@@ -20,7 +20,9 @@ of [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnec
   ("Contacting the portal…", "Connected"), with the full `gpclient` log one
   click away (and a button to copy it).
 - **Themes**: System, White, Black, Neon blue, Red and Frutiger Aero
-  (sky, glass, bubbles and glossy buttons), in Preferences (Ctrl+,).
+  (sky, glass, bubbles and glossy buttons), in Preferences (Ctrl+,). You
+  can also **make your own**: a theme is just a `.css` file, see
+  [docs/THEMES.md](docs/THEMES.md).
 - **No password to connect**, without giving away root (see
   [Security](#security)).
 
