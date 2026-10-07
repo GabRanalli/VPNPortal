@@ -1,187 +1,186 @@
-# Spanish translation of VPN Portal.
-# Traducción al español de VPN Portal.
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the vpnportal package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: vpnportal\n"
 "Report-Msgid-Bugs-To: https://github.com/GabRanalli/VPNPortal/issues\n"
 "POT-Creation-Date: 2026-10-07 11:58+0200\n"
-"PO-Revision-Date: 2026-10-07 12:00+0200\n"
-"Last-Translator: Gabriel Ranalli <gabranalli@protonmail.com>\n"
-"Language-Team: Spanish\n"
-"Language: es\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: src/config.c:223
 #, c-format
 msgid "Could not create %s: %s"
-msgstr "No se pudo crear %s: %s"
+msgstr ""
 
 #: src/login.c:388
 msgid "Signing in…"
-msgstr "Iniciando sesión…"
+msgstr ""
 
 #: src/login.c:432
 #, c-format
 msgid "Sign in · %s"
-msgstr "Iniciar sesión · %s"
+msgstr ""
 
 #: src/main.c:205
 #, c-format
 msgid "Activity · %s"
-msgstr "Actividad · %s"
+msgstr ""
 
 #: src/main.c:208 src/main.c:992
 msgid "Activity"
-msgstr "Actividad"
+msgstr ""
 
 #: src/main.c:343 src/main.c:477
 msgid "Switch"
-msgstr "Cambiar"
+msgstr ""
 
 #: src/main.c:343 src/main.c:580
 msgid "Connect"
-msgstr "Conectar"
+msgstr ""
 
 #: src/main.c:349 src/main.c:354
 msgid "Disconnect"
-msgstr "Desconectar"
+msgstr ""
 
 #: src/main.c:438
 #, c-format
 msgid "» Switching to %s: this one is disconnected first…"
-msgstr "» Cambiando a %s: primero se desconecta esta…"
+msgstr ""
 
 #: src/main.c:471
 #, c-format
 msgid "Switch to %s?"
-msgstr "¿Cambiar a %s?"
+msgstr ""
 
 #: src/main.c:473
 #, c-format
 msgid "%s will be disconnected and then %s will be connected."
-msgstr "Se desconectará %s y después se conectará %s."
+msgstr ""
 
 #: src/main.c:476 src/main.c:734 src/main.c:782 src/main.c:1214 src/main.c:1426
 #: src/main.c:1587
 msgid "Cancel"
-msgstr "Cancelar"
+msgstr ""
 
 #: src/main.c:508
 msgid "» Signing in to the gateway…"
-msgstr "» Iniciando sesión en la gateway…"
+msgstr ""
 
 #: src/main.c:509
 msgid "» Signing in…"
-msgstr "» Iniciando sesión…"
+msgstr ""
 
 #: src/main.c:573 src/main.c:575
 msgid "Edit"
-msgstr "Editar"
+msgstr ""
 
 #. AdwAlertDialog: la típica pregunta de confirmación de GNOME.
 #: src/main.c:729
 msgid "Delete this VPN?"
-msgstr "¿Eliminar esta VPN?"
+msgstr ""
 
 #: src/main.c:731
 #, c-format
 msgid "“%s” will be removed from the list."
-msgstr "Se borrará «%s» de la lista."
+msgstr ""
 
 #: src/main.c:735
 msgid "Delete"
-msgstr "Eliminar"
+msgstr ""
 
 #: src/main.c:770
 msgid "Edit VPN"
-msgstr "Editar VPN"
+msgstr ""
 
 #: src/main.c:771
 msgid "New VPN"
-msgstr "Nueva VPN"
+msgstr ""
 
 #: src/main.c:787
 msgid "Save"
-msgstr "Guardar"
+msgstr ""
 
 #: src/main.c:795
 msgid ""
 "The first time you connect to a new server, you will be asked for the "
 "administrator password to approve it."
 msgstr ""
-"La primera vez que conectes a un servidor nuevo te pedirá la contraseña de "
-"administrador para aprobarlo."
 
 #: src/main.c:797
 msgid "Name"
-msgstr "Nombre"
+msgstr ""
 
 #: src/main.c:798
 msgid "Portal"
-msgstr "Portal"
+msgstr ""
 
 #: src/main.c:799
 msgid "Gateway (empty = automatic)"
-msgstr "Gateway (vacío = automática)"
+msgstr ""
 
 #: src/main.c:801
 msgid "User (optional)"
-msgstr "Usuario (opcional)"
+msgstr ""
 
 #: src/main.c:806
 msgid "Send HIP report"
-msgstr "Enviar informe HIP"
+msgstr ""
 
 #: src/main.c:808
 msgid "Only if your organization requires it"
-msgstr "Solo si tu organización lo exige"
+msgstr ""
 
 #: src/main.c:819
 msgid "Delete VPN"
-msgstr "Eliminar VPN"
+msgstr ""
 
 #: src/main.c:860
 msgid "No VPNs"
-msgstr "Sin VPN"
+msgstr ""
 
 #: src/main.c:862
 msgid "Add your first GlobalProtect VPN."
-msgstr "Añade tu primera VPN de GlobalProtect."
+msgstr ""
 
 #: src/main.c:864 src/main.c:1734
 msgid "Add VPN"
-msgstr "Añadir VPN"
+msgstr ""
 
 #. Un "toast": el mensajito que aparece abajo unos segundos.
 #: src/main.c:886
 msgid "Log copied"
-msgstr "Registro copiado"
+msgstr ""
 
 #: src/main.c:916 src/main.c:918
 msgid "Copy all"
-msgstr "Copiar todo"
+msgstr ""
 
 #: src/main.c:930 src/main.c:994
 msgid "Full log"
-msgstr "Registro completo"
+msgstr ""
 
 #. Lo que se ve cuando la lista está vacía.
 #: src/main.c:1008
 msgid "No activity yet"
-msgstr "Aún no hay actividad"
+msgstr ""
 
 #: src/main.c:1051
 msgid "Connections"
-msgstr "Conexiones"
+msgstr ""
 
 #: src/main.c:1092
 msgid "VPN Portal keeps running"
-msgstr "VPN Portal sigue en marcha"
+msgstr ""
 
 #: src/main.c:1093
 msgid ""
@@ -189,62 +188,59 @@ msgid ""
 "and disconnect from its icon. To close it completely, use “Quit” in that "
 "menu or press Ctrl+Q."
 msgstr ""
-"Al cerrar la ventana, la app se queda en la barra superior para que puedas "
-"conectar y desconectar desde su icono. Para cerrarla del todo, usa «Salir» "
-"en ese menú o pulsa Ctrl+Q."
 
 #: src/main.c:1097
 msgid "Quit completely"
-msgstr "Salir del todo"
+msgstr ""
 
 #: src/main.c:1098
 msgid "Got it"
-msgstr "Entendido"
+msgstr ""
 
 #: src/main.c:1157 src/main.c:1503
 msgid "Theme"
-msgstr "Tema"
+msgstr ""
 
 #: src/main.c:1158
 msgid "The theme has CSS errors (details in the log)"
-msgstr "El tema tiene errores de CSS (detalles en el registro)"
+msgstr ""
 
 #: src/main.c:1198
 msgid "Theme removed"
-msgstr "Tema quitado"
+msgstr ""
 
 #: src/main.c:1209
 #, c-format
 msgid "Remove the theme “%s”?"
-msgstr "¿Quitar el tema «%s»?"
+msgstr ""
 
 #: src/main.c:1211
 msgid "Its file will be deleted from the themes folder."
-msgstr "Se borrará su fichero de la carpeta de temas."
+msgstr ""
 
 #: src/main.c:1215
 msgid "Remove"
-msgstr "Quitar"
+msgstr ""
 
 #: src/main.c:1266 src/main.c:1269
 msgid "Remove theme"
-msgstr "Quitar tema"
+msgstr ""
 
 #: src/main.c:1316
 msgid "Theme added"
-msgstr "Tema añadido"
+msgstr ""
 
 #: src/main.c:1326
 msgid "Themes (.css)"
-msgstr "Temas (.css)"
+msgstr ""
 
 #: src/main.c:1332
 msgid "Add theme"
-msgstr "Añadir tema"
+msgstr ""
 
 #: src/main.c:1355
 msgid "Your themes"
-msgstr "Temas propios"
+msgstr ""
 
 #: src/main.c:1358
 msgid ""
@@ -252,304 +248,298 @@ msgid ""
 "one in use, it reloads by itself when you save. <a href=\"https://github.com/"
 "GabRanalli/VPNPortal/blob/main/docs/THEMES.md\">How to make a theme</a>"
 msgstr ""
-"Un tema es un fichero .css. Añade el tuyo y aparecerá arriba; si editas el "
-"que tienes puesto, se recarga solo al guardar. <a href=\"https://github.com/"
-"GabRanalli/VPNPortal/blob/main/docs/THEMES.es.md\">Cómo hacer un tema</a>"
 
 #: src/main.c:1365 src/main.c:1368
 msgid "Open the themes folder"
-msgstr "Abrir la carpeta de temas"
+msgstr ""
 
 #: src/main.c:1372
 msgid "Add theme…"
-msgstr "Añadir tema…"
+msgstr ""
 
 #: src/main.c:1421
 msgid "Restart now?"
-msgstr "¿Reiniciar ahora?"
+msgstr ""
 
 #: src/main.c:1423
 #, c-format
 msgid "Restarting will disconnect %s."
-msgstr "Al reiniciar se desconectará %s."
+msgstr ""
 
 #: src/main.c:1427 src/main.c:1454
 msgid "Restart"
-msgstr "Reiniciar"
+msgstr ""
 
 #: src/main.c:1452
 msgid "The language will change when the app restarts"
-msgstr "El idioma cambiará al reiniciar la app"
+msgstr ""
 
 #: src/main.c:1466 src/main.c:1476
 msgid "Language"
-msgstr "Idioma"
+msgstr ""
 
 #: src/main.c:1471
 msgid "Automatic (system language)"
-msgstr "Automático (el del sistema)"
+msgstr ""
 
 #: src/main.c:1505
 msgid "Applied right away."
-msgstr "Se aplica al momento."
+msgstr ""
 
 #: src/main.c:1514
 msgid "Appearance"
-msgstr "Apariencia"
+msgstr ""
 
 #: src/main.c:1554
 msgid "Could not forget the sessions"
-msgstr "No se pudieron olvidar las sesiones"
+msgstr ""
 
 #: src/main.c:1557
 msgid "» Saved sign-in sessions forgotten"
-msgstr "» Sesiones de inicio de sesión olvidadas"
+msgstr ""
 
 #: src/main.c:1558
 msgid "Sessions forgotten"
-msgstr "Sesiones olvidadas"
+msgstr ""
 
 #: src/main.c:1577
 msgid "Finish or cancel the sign-in first"
-msgstr "Termina o cancela el inicio de sesión antes"
+msgstr ""
 
 #: src/main.c:1582
 msgid "Forget saved sessions?"
-msgstr "¿Olvidar las sesiones guardadas?"
+msgstr ""
 
 #: src/main.c:1583
 msgid ""
 "Next time you connect you will have to sign in again (and enter the code "
 "from your phone, if you use one) on every VPN. Your VPNs are not deleted."
 msgstr ""
-"La próxima vez que conectes tendrás que volver a iniciar sesión (y, si lo "
-"usas, poner el código del móvil) en todas las VPN. Tus VPN configuradas no "
-"se borran."
 
 #: src/main.c:1588
 msgid "Forget"
-msgstr "Olvidar"
+msgstr ""
 
 #: src/main.c:1742
 msgid "Preferences"
-msgstr "Preferencias"
+msgstr ""
 
 #: src/main.c:1745
 msgid "Start when I log in"
-msgstr "Arrancar al iniciar sesión"
+msgstr ""
 
 #: src/main.c:1747
 msgid "Forget saved sessions…"
-msgstr "Olvidar sesiones guardadas…"
+msgstr ""
 
 #: src/main.c:1751 src/tray.c:570
 msgid "Quit"
-msgstr "Salir"
+msgstr ""
 
 #. F10
 #: src/main.c:1760
 msgid "Main menu"
-msgstr "Menú principal"
+msgstr ""
 
 #: src/main.c:1948
 #, c-format
 msgid "Could not read the configuration: %s"
-msgstr "No se pudo leer la configuración: %s"
+msgstr ""
 
 #: src/main.c:1962
 msgid "No session bus: signing in will not work"
-msgstr "Sin bus de sesión: el login no funcionará"
+msgstr ""
 
 #: src/main.c:1964
 #, c-format
 msgid "Could not publish the sign-in service: %s"
-msgstr "No se pudo publicar el login: %s"
+msgstr ""
 
 #: src/main.c:2038
 msgid "Start hidden, with just the top bar icon"
-msgstr "Arrancar oculta, solo con el icono de la barra"
+msgstr ""
 
 #. N_(): marcados para traducir; se traducen al copiarlos en theme_init.
 #: src/theme.c:28
 msgid "System"
-msgstr "Sistema"
+msgstr ""
 
 #: src/theme.c:28
 msgid "Light or dark, as GNOME is set"
-msgstr "Claro u oscuro, como tengas GNOME"
+msgstr ""
 
 #: src/theme.c:30
 msgid "White"
-msgstr "Blanco"
+msgstr ""
 
 #: src/theme.c:30
 msgid "Light and clean"
-msgstr "Claro y limpio"
+msgstr ""
 
 #: src/theme.c:32
 msgid "Black"
-msgstr "Negro"
+msgstr ""
 
 #: src/theme.c:32
 msgid "Dark, pure black"
-msgstr "Oscuro, de negro puro"
+msgstr ""
 
 #: src/theme.c:34
 msgid "Neon blue"
-msgstr "Azul neón"
+msgstr ""
 
 #: src/theme.c:34
 msgid "Dark, with glowing cyan borders and buttons"
-msgstr "Oscuro, con bordes y botones cian que brillan"
+msgstr ""
 
 #: src/theme.c:36
 msgid "Red"
-msgstr "Rojo"
+msgstr ""
 
 #: src/theme.c:36
 msgid "Dark, in maroon and red tones"
-msgstr "Oscuro, en tonos granate y rojo"
+msgstr ""
 
 #: src/theme.c:38
 msgid "Sky, glass and glossy buttons"
-msgstr "Cielo, cristal y botones con brillo"
+msgstr ""
 
 #: src/theme.c:162
 msgid "Your theme"
-msgstr "Tema propio"
+msgstr ""
 
 #: src/theme.c:200
 #, c-format
 msgid "Error in the theme's CSS, line %zu: %s"
-msgstr "Error en el CSS del tema, línea %zu: %s"
+msgstr ""
 
 #: src/theme.c:338
 #, c-format
 msgid "A theme has to be a .css file"
-msgstr "Un tema tiene que ser un fichero .css"
+msgstr ""
 
 #: src/theme.c:362
 #, c-format
 msgid "That theme is not one of your themes"
-msgstr "Ese tema no es un tema propio"
+msgstr ""
 
 #: src/tray.c:538
 msgid "Not connected"
-msgstr "Sin conexión"
+msgstr ""
 
 #: src/tray.c:551
 #, c-format
 msgid "Disconnect %s"
-msgstr "Desconectar %s"
+msgstr ""
 
 #: src/tray.c:557
 #, c-format
 msgid "Switch to %s"
-msgstr "Cambiar a %s"
+msgstr ""
 
 #: src/tray.c:561
 msgid "Add a VPN from the window"
-msgstr "Añade una VPN desde la ventana"
+msgstr ""
 
 #: src/tray.c:564
 #, c-format
 msgid "Connect %s"
-msgstr "Conectar %s"
+msgstr ""
 
 #: src/tray.c:569
 msgid "Show window"
-msgstr "Mostrar ventana"
+msgstr ""
 
 #. N_() marca el texto para traducir sin traducirlo aún (aquí no se
 #. * puede: es una tabla fija); se traduce al usarlo, con _().
 #: src/vpn.c:116
 msgid "Contacting the portal…"
-msgstr "Contactando con el portal…"
+msgstr ""
 
 #: src/vpn.c:117
 msgid "Waiting for you to sign in…"
-msgstr "Esperando a que inicies sesión…"
+msgstr ""
 
 #: src/vpn.c:118
 msgid "Signed in; getting the configuration…"
-msgstr "Sesión iniciada; obteniendo la configuración…"
+msgstr ""
 
 #: src/vpn.c:119
 msgid "Connecting to the gateway…"
-msgstr "Conectando a la gateway…"
+msgstr ""
 
 #: src/vpn.c:120
 msgid "HIP report sent"
-msgstr "Informe HIP enviado"
+msgstr ""
 
 #: src/vpn.c:121
 msgid "Tunnel established"
-msgstr "Túnel establecido"
+msgstr ""
 
 #: src/vpn.c:134
 msgid "sudo asks for a password: the sudo rule is not installed"
-msgstr "sudo pide contraseña: falta instalar la regla de sudo"
+msgstr ""
 
 #: src/vpn.c:246
 #, c-format
 msgid "gpclient has exited (code %d)"
-msgstr "gpclient ha terminado (código %d)"
+msgstr ""
 
 #: src/vpn.c:250
 #, c-format
 msgid "gpclient was stopped by signal %d"
-msgstr "gpclient ha terminado por la señal %d"
+msgstr ""
 
 #: src/vpn.c:256 src/vpn.c:577
 msgid "Disconnected"
-msgstr "Desconectada"
+msgstr ""
 
 #: src/vpn.c:258
 msgid "The connection failed. The details are in the full log."
-msgstr "La conexión ha fallado. Los detalles están en el registro completo."
+msgstr ""
 
 #: src/vpn.c:273 src/vpn.c:579
 msgid "Connected"
-msgstr "Conectada"
+msgstr ""
 
 #: src/vpn.c:277
 msgid "The tunnel was lost; gpclient is reconnecting…"
-msgstr "Se ha perdido el túnel; gpclient está reconectando…"
+msgstr ""
 
 #: src/vpn.c:292
 msgid "Not responding to Ctrl+C; sending SIGTERM"
-msgstr "No responde a Ctrl+C; enviando SIGTERM"
+msgstr ""
 
 #: src/vpn.c:325
 #, c-format
 msgid "Running: %s"
-msgstr "Lanzando: %s"
+msgstr ""
 
 #: src/vpn.c:336
 #, c-format
 msgid "Could not run sudo: %s"
-msgstr "No se pudo lanzar sudo: %s"
+msgstr ""
 
 #: src/vpn.c:337
 msgid "Could not start gpclient"
-msgstr "No se pudo lanzar gpclient"
+msgstr ""
 
 #: src/vpn.c:402
 msgid "Server approved"
-msgstr "Servidor aprobado"
+msgstr ""
 
 #. lo cancelaste tú
 #: src/vpn.c:408
 msgid "Cancelled"
-msgstr "Cancelada"
+msgstr ""
 
 #: src/vpn.c:410
 msgid "Not approved (was the password dialog cancelled?)"
-msgstr "No se ha aprobado (¿se canceló la contraseña?)"
+msgstr ""
 
 #: src/vpn.c:411
 msgid "The server was not approved"
-msgstr "No se ha aprobado el servidor"
+msgstr ""
 
 #: src/vpn.c:429
 #, c-format
@@ -557,37 +547,36 @@ msgid ""
 "First connection to %s: it has to be approved once (you will be asked for "
 "your password)"
 msgstr ""
-"Primera conexión a %s: hay que aprobarlo una vez (te pedirá la contraseña)"
 
 #: src/vpn.c:431
 msgid "Approving the server (asks for your password, only this time)…"
-msgstr "Aprobando el servidor (te pedirá la contraseña, solo esta vez)…"
+msgstr ""
 
 #: src/vpn.c:439
 #, c-format
 msgid "Could not run pkexec: %s"
-msgstr "No se pudo lanzar pkexec: %s"
+msgstr ""
 
 #: src/vpn.c:440
 msgid "Could not ask for the password"
-msgstr "No se pudo pedir la contraseña"
+msgstr ""
 
 #: src/vpn.c:514
 msgid "Starting the connection"
-msgstr "Iniciando la conexión"
+msgstr ""
 
 #: src/vpn.c:519
 #, c-format
 msgid "There is already an active VPN tunnel (%s). Disconnect it first."
-msgstr "Ya hay un túnel VPN activo (%s). Desconéctalo antes."
+msgstr ""
 
 #: src/vpn.c:521
 msgid "Another VPN is connected outside the app. Disconnect it first."
-msgstr "Ya hay otra VPN conectada fuera de la app. Desconéctala antes."
+msgstr ""
 
 #: src/vpn.c:551
 msgid "Cancelling…"
-msgstr "Cancelando…"
+msgstr ""
 
 #.
 #. * SIGINT es exactamente lo que manda Ctrl+C. Se lo enviamos a sudo
@@ -596,12 +585,12 @@ msgstr "Cancelando…"
 #.
 #: src/vpn.c:565
 msgid "Disconnecting (Ctrl+C)…"
-msgstr "Desconectando (Ctrl+C)…"
+msgstr ""
 
 #: src/vpn.c:566 src/vpn.c:580
 msgid "Disconnecting…"
-msgstr "Desconectando…"
+msgstr ""
 
 #: src/vpn.c:578
 msgid "Connecting…"
-msgstr "Conectando…"
+msgstr ""
