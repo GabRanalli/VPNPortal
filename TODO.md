@@ -3,7 +3,6 @@
 ## Siguiente
 - [ ] Temas: claro, oscuro y algunas variantes de color, en Preferencias.
 - [ ] Interfaz en inglés (y quizá traducción al español con gettext).
-- [ ] Opción para olvidar la sesión de login guardada (como `gpauth --clean`).
 
 ## Para publicar mejor
 - [ ] Capturas en el README.
@@ -21,6 +20,7 @@
 - [x] Modo demo (tools/demo.sh) para probar sin VPN ni login.
 - [x] Arrancar sola al iniciar sesión, oculta en la barra (--background).
 - [x] Aviso la primera vez que se cierra la ventana.
+- [x] Olvidar las sesiones de login guardadas (menú ☰).
 - [x] Registro escueto ("Actividad") con los pasos y un botón para ver y
       copiar el registro completo de gpclient.
 - [x] Id de la app io.github.GabRanalli.VPNPortal, licencia GPL-3.0 y README

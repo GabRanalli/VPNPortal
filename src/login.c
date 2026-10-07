@@ -43,11 +43,18 @@ get_network_session (void)
   static WebKitNetworkSession *session = NULL;
 
   if (session == NULL) {
+#ifdef WEBKIT_DIR
+    /* Carpeta fija elegida al compilar (la usa el modo demo, para no
+     * mezclar sus sesiones con las tuyas). */
+    g_autofree char *data_dir = g_build_filename (WEBKIT_DIR, "data", NULL);
+    g_autofree char *cache_dir = g_build_filename (WEBKIT_DIR, "cache", NULL);
+#else
     /* ~/.local/share/vpnportal/webkit y ~/.cache/vpnportal/webkit */
     g_autofree char *data_dir = g_build_filename (g_get_user_data_dir (),
                                                   "vpnportal", "webkit", NULL);
     g_autofree char *cache_dir = g_build_filename (g_get_user_cache_dir (),
                                                    "vpnportal", "webkit", NULL);
+#endif
     g_autofree char *cookies = g_build_filename (data_dir, "cookies.sqlite",
                                                  NULL);
     session = webkit_network_session_new (data_dir, cache_dir);
@@ -56,6 +63,27 @@ get_network_session (void)
       cookies, WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
   }
   return session;
+}
+
+/* Olvidar sesiones: WebKit borra (en segundo plano) todo lo que guarda
+ * esta sesión del navegador: cookies, almacenamiento local, caché... */
+void
+login_forget_sessions (GAsyncReadyCallback callback, gpointer user_data)
+{
+  WebKitWebsiteDataManager *manager =
+    webkit_network_session_get_website_data_manager (get_network_session ());
+
+  /* timespan 0 = "desde siempre" (no solo lo de las últimas horas). */
+  webkit_website_data_manager_clear (manager, WEBKIT_WEBSITE_DATA_ALL, 0,
+                                     NULL, callback, user_data);
+}
+
+gboolean
+login_forget_sessions_finish (GAsyncResult *result, GError **error)
+{
+  WebKitWebsiteDataManager *manager =
+    webkit_network_session_get_website_data_manager (get_network_session ());
+  return webkit_website_data_manager_clear_finish (manager, result, error);
 }
 
 /* ---------------------------------------------------------------- */

@@ -92,6 +92,7 @@ gcc -std=c11 -O1 -o "$DEMO/vpnportal-demo" \
   -DALLOWLIST_PATH="\"$DEMO/etc/allowed-hosts\"" \
   -DTUN_PATH="\"$DEMO/tun0\"" \
   -DCONFIG_FILE_PATH="\"$DEMO/vpns.ini\"" \
+  -DWEBKIT_DIR="\"$DEMO/webkit\"" \
   $(pkg-config --cflags --libs libadwaita-1 webkitgtk-6.0)
 
 echo "Arrancando VPN Portal (demo)…"

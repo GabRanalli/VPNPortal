@@ -43,6 +43,7 @@ typedef struct {
 static GPtrArray     *rows;          /* VpnRow*, en el orden de la lista */
 static GtkWindow     *main_window;
 static GtkWidget     *stack;         /* página "empty" o "list" */
+static GtkWidget     *toast_overlay; /* donde salen los avisos breves */
 static GtkWidget     *vpn_group;     /* la tarjeta con las filas */
 static GtkTextBuffer *log_buffer;    /* el registro completo (texto) */
 static GtkWidget     *log_view;      /* su vista, si el diálogo está abierto */
@@ -1112,6 +1113,72 @@ on_close_request (GtkWindow *window, gpointer user_data)
 }
 
 /* ---------------------------------------------------------------- */
+/* Olvidar las sesiones guardadas del login                         */
+/* ---------------------------------------------------------------- */
+
+/* Un "toast": el mensajito que aparece abajo unos segundos. */
+static void
+show_toast (const char *message)
+{
+  if (toast_overlay != NULL)
+    adw_toast_overlay_add_toast (ADW_TOAST_OVERLAY (toast_overlay),
+                                 adw_toast_new (message));
+}
+
+static void
+on_sessions_forgotten (GObject *source, GAsyncResult *result,
+                       gpointer user_data)
+{
+  (void) source; (void) user_data;
+  g_autoptr (GError) error = NULL;
+
+  if (!login_forget_sessions_finish (result, &error)) {
+    append_log ("App", error->message);
+    show_toast ("No se pudieron olvidar las sesiones");
+    return;
+  }
+  append_log ("App", "» Sesiones de inicio de sesión olvidadas");
+  show_toast ("Sesiones olvidadas");
+}
+
+static void
+on_forget_confirmed (AdwAlertDialog *alert, const char *response,
+                     gpointer user_data)
+{
+  (void) alert; (void) response; (void) user_data;
+  login_forget_sessions (on_sessions_forgotten, NULL);
+}
+
+static void
+on_forget_sessions_action (GSimpleAction *action, GVariant *parameter,
+                           gpointer user_data)
+{
+  (void) action; (void) parameter; (void) user_data;
+
+  /* Borrar las cookies a mitad de un login lo rompería. */
+  if (login_dialog != NULL) {
+    show_toast ("Termina o cancela el inicio de sesión antes");
+    return;
+  }
+
+  AdwDialog *alert = adw_alert_dialog_new (
+    "¿Olvidar las sesiones guardadas?",
+    "La próxima vez que conectes tendrás que volver a iniciar sesión (y, "
+    "si lo usas, poner el código del móvil) en todas las VPN. Tus VPN "
+    "configuradas no se borran.");
+  adw_alert_dialog_add_responses (ADW_ALERT_DIALOG (alert),
+                                  "cancel", "Cancelar",
+                                  "forget", "Olvidar",
+                                  NULL);
+  adw_alert_dialog_set_response_appearance (ADW_ALERT_DIALOG (alert), "forget",
+                                            ADW_RESPONSE_DESTRUCTIVE);
+  adw_alert_dialog_set_close_response (ADW_ALERT_DIALOG (alert), "cancel");
+  g_signal_connect (alert, "response::forget",
+                    G_CALLBACK (on_forget_confirmed), NULL);
+  adw_dialog_present (alert, GTK_WIDGET (main_window));
+}
+
+/* ---------------------------------------------------------------- */
 /* Arrancar al iniciar sesión                                       */
 /* ---------------------------------------------------------------- */
 
@@ -1254,6 +1321,8 @@ on_activate (GtkApplication *app, gpointer user_data)
   g_autoptr (GMenu) options_section = g_menu_new ();
   g_menu_append (options_section, "Arrancar al iniciar sesión",
                  "app.autostart");
+  g_menu_append (options_section, "Olvidar sesiones guardadas…",
+                 "app.forget-sessions");
   g_menu_append_section (menu, NULL, G_MENU_MODEL (options_section));
   g_autoptr (GMenu) quit_section = g_menu_new ();
   g_menu_append (quit_section, "Salir", "app.quit");
@@ -1277,7 +1346,12 @@ on_activate (GtkApplication *app, gpointer user_data)
 
   GtkWidget *toolbar_view = adw_toolbar_view_new ();
   adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (toolbar_view), header);
-  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view), stack);
+  /* El contenido va dentro de un AdwToastOverlay: así los "toasts" (avisos
+   * breves) pueden salir encima de lo que haya. */
+  toast_overlay = adw_toast_overlay_new ();
+  adw_toast_overlay_set_child (ADW_TOAST_OVERLAY (toast_overlay), stack);
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (toolbar_view),
+                                toast_overlay);
   adw_application_window_set_content (ADW_APPLICATION_WINDOW (window),
                                       toolbar_view);
 
@@ -1406,6 +1480,7 @@ on_startup (GApplication *app, gpointer user_data)
   /* Ctrl+Q para salir del todo (desconectando). */
   static const GActionEntry app_actions[] = {
     { .name = "quit", .activate = on_quit_action },
+    { .name = "forget-sessions", .activate = on_forget_sessions_action },
     /* Sin .activate y con estado sí/no: GLib la convierte en un
      * interruptor que llama a .change_state con el valor contrario. */
     { .name = "autostart", .state = "false",
@@ -1462,6 +1537,7 @@ on_shutdown (GApplication *app, gpointer user_data)
   log_view = NULL;
   activity_group = NULL;
   activity_list = NULL;
+  toast_overlay = NULL;
   g_clear_handle_id (&activity_scroll_id, g_source_remove);
   auth_service_stop ();
   tray_shutdown ();
