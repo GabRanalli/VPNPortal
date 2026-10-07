@@ -406,8 +406,13 @@ on_vpn_state (Vpn *vpn, VpnState state, gpointer user_data)
     return;
   }
 
-  /* Si la VPN se ha parado con el login abierto, ya no sirve: fuera. */
-  if (login_dialog != NULL && find_active_row () == NULL)
+  /* Si la VPN se para (o se está parando) con el login abierto, el login
+   * ya no sirve: se cierra, y gpclient recibe "cancelado". Si no, gpclient
+   * se quedaría esperando a que terminases de iniciar sesión y no podría
+   * desconectarse. */
+  VpnRow *active = find_active_row ();
+  if (login_dialog != NULL &&
+      (active == NULL || vpn_get_state (active->vpn) == VPN_DISCONNECTING))
     adw_dialog_close (login_dialog);
 
   /* Cambio de VPN: la anterior ya está desconectada del todo, ahora sí
