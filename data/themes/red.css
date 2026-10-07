@@ -1,0 +1,22 @@
+/* Rojo: oscuro, en tonos granate, con acentos rojos. */
+:root {
+  --accent-bg-color: #c81e2a;
+  --accent-fg-color: #ffffff;
+  --accent-color: #ff6b70;
+  --yaru-accent-bg-color: #c81e2a;
+  --yaru-accent-color: #ff6b70;
+
+  --window-bg-color: #160a0c;
+  --window-fg-color: #fbe9ea;
+  --view-bg-color: #1e0e10;
+  --view-fg-color: #fbe9ea;
+  --headerbar-bg-color: #210d10;
+  --headerbar-backdrop-color: #1a0b0d;
+  --headerbar-fg-color: #fbe9ea;
+  --card-bg-color: rgba(255, 90, 100, 0.07);
+  --card-fg-color: #fbe9ea;
+  --card-shade-color: rgba(255, 80, 90, 0.18);
+  --dialog-bg-color: #1d0c0f;
+  --popover-bg-color: #230f12;
+  --border-color: rgba(255, 110, 115, 0.22);
+}

@@ -42,22 +42,50 @@ app_settings_get_bool (const char *key)
   return g_key_file_get_boolean (keyfile, "app", key, NULL);
 }
 
-void
-app_settings_set_bool (const char *key, gboolean value)
+/* Carga settings.ini (o uno vacío si no existe todavía). */
+static GKeyFile *
+settings_load (void)
+{
+  g_autofree char *path = settings_path ();
+  GKeyFile *keyfile = g_key_file_new ();
+  g_key_file_load_from_file (keyfile, path, G_KEY_FILE_KEEP_COMMENTS, NULL);
+  return keyfile;
+}
+
+static void
+settings_save (GKeyFile *keyfile)
 {
   g_autofree char *path = settings_path ();
   g_autofree char *dir = g_path_get_dirname (path);
-  g_autoptr (GKeyFile) keyfile = g_key_file_new ();
-
-  /* Cargamos lo que hubiera (si no existe, empezamos de cero) para no
-   * borrar otros ajustes al guardar este. */
-  g_key_file_load_from_file (keyfile, path, G_KEY_FILE_KEEP_COMMENTS, NULL);
-  g_key_file_set_boolean (keyfile, "app", key, value);
+  g_autoptr (GError) error = NULL;
 
   g_mkdir_with_parents (dir, 0700);
-  g_autoptr (GError) error = NULL;
   if (!g_key_file_save_to_file (keyfile, path, &error))
     g_warning ("No se pudo guardar %s: %s", path, error->message);
+}
+
+/* Al guardar un ajuste cargamos antes los demás, para no borrarlos. */
+void
+app_settings_set_bool (const char *key, gboolean value)
+{
+  g_autoptr (GKeyFile) keyfile = settings_load ();
+  g_key_file_set_boolean (keyfile, "app", key, value);
+  settings_save (keyfile);
+}
+
+char *
+app_settings_get_string (const char *key)
+{
+  g_autoptr (GKeyFile) keyfile = settings_load ();
+  return g_key_file_get_string (keyfile, "app", key, NULL);
+}
+
+void
+app_settings_set_string (const char *key, const char *value)
+{
+  g_autoptr (GKeyFile) keyfile = settings_load ();
+  g_key_file_set_string (keyfile, "app", key, value);
+  settings_save (keyfile);
 }
 
 VpnConfig *

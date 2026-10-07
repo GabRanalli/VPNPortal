@@ -23,6 +23,7 @@
 #include "auth.h"
 #include "config.h"
 #include "login.h"
+#include "theme.h"
 #include "tray.h"
 #include "vpn.h"
 
@@ -1113,6 +1114,87 @@ on_close_request (GtkWindow *window, gpointer user_data)
 }
 
 /* ---------------------------------------------------------------- */
+/* Preferencias (temas)                                             */
+/* ---------------------------------------------------------------- */
+
+/* La acción "app.theme": su ESTADO es el id del tema actual ("aero"...).
+ * Pedir otro estado = cambiar de tema. Los botones de radio de
+ * Preferencias están enganchados a ella: GTK marca solo el que coincide
+ * con el estado, y al pulsar uno pide el cambio. */
+static void
+on_theme_change_state (GSimpleAction *action, GVariant *value,
+                       gpointer user_data)
+{
+  (void) user_data;
+  theme_set (g_variant_get_string (value, NULL));
+  g_simple_action_set_state (action, g_variant_new_string (theme_get_current ()));
+}
+
+static void
+on_preferences_action (GSimpleAction *action, GVariant *parameter,
+                       gpointer user_data)
+{
+  (void) action; (void) parameter; (void) user_data;
+
+  GtkWidget *group = adw_preferences_group_new ();
+  adw_preferences_group_set_title (ADW_PREFERENCES_GROUP (group), "Tema");
+  adw_preferences_group_set_description (ADW_PREFERENCES_GROUP (group),
+                                         "Se aplica al momento.");
+
+  guint n_themes;
+  const ThemeInfo *themes = theme_list (&n_themes);
+  GtkWidget *first_check = NULL;
+
+  for (guint i = 0; i < n_themes; i++) {
+    const ThemeInfo *theme = &themes[i];
+
+    GtkWidget *row = adw_action_row_new ();
+    adw_preferences_row_set_use_markup (ADW_PREFERENCES_ROW (row), FALSE);
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), theme->name);
+    adw_action_row_set_subtitle (ADW_ACTION_ROW (row), theme->description);
+
+    /* La muestra de color: una caja vacía pintada desde style.css con
+     * las clases "theme-swatch" y el id del tema. */
+    GtkWidget *swatch = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_widget_add_css_class (swatch, "theme-swatch");
+    gtk_widget_add_css_class (swatch, theme->id);
+    gtk_widget_set_valign (swatch, GTK_ALIGN_CENTER);
+    adw_action_row_add_prefix (ADW_ACTION_ROW (row), swatch);
+
+    /* Botón de radio enganchado a "app.theme" con su id como "target":
+     * se ve marcado si el estado de la acción es ese id. Van en un mismo
+     * grupo para que se dibujen como radios (círculo) y no como casillas. */
+    GtkWidget *check = gtk_check_button_new ();
+    gtk_widget_set_valign (check, GTK_ALIGN_CENTER);
+    gtk_actionable_set_action_name (GTK_ACTIONABLE (check), "app.theme");
+    gtk_actionable_set_action_target_value (GTK_ACTIONABLE (check),
+                                            g_variant_new_string (theme->id));
+    if (first_check != NULL)
+      gtk_check_button_set_group (GTK_CHECK_BUTTON (check),
+                                  GTK_CHECK_BUTTON (first_check));
+    else
+      first_check = check;
+    adw_action_row_add_suffix (ADW_ACTION_ROW (row), check);
+
+    /* Pulsar en cualquier parte de la fila = pulsar el botón de radio. */
+    adw_action_row_set_activatable_widget (ADW_ACTION_ROW (row), check);
+    adw_preferences_group_add (ADW_PREFERENCES_GROUP (group), row);
+  }
+
+  GtkWidget *page = adw_preferences_page_new ();
+  adw_preferences_page_set_title (ADW_PREFERENCES_PAGE (page), "Apariencia");
+  adw_preferences_page_set_icon_name (ADW_PREFERENCES_PAGE (page),
+                                      "applications-graphics-symbolic");
+  adw_preferences_page_add (ADW_PREFERENCES_PAGE (page),
+                            ADW_PREFERENCES_GROUP (group));
+
+  AdwDialog *dialog = adw_preferences_dialog_new ();
+  adw_preferences_dialog_add (ADW_PREFERENCES_DIALOG (dialog),
+                              ADW_PREFERENCES_PAGE (page));
+  adw_dialog_present (dialog, GTK_WIDGET (main_window));
+}
+
+/* ---------------------------------------------------------------- */
 /* Olvidar las sesiones guardadas del login                         */
 /* ---------------------------------------------------------------- */
 
@@ -1303,6 +1385,9 @@ on_activate (GtkApplication *app, gpointer user_data)
 
   GtkWidget *window = adw_application_window_new (app);
   main_window = GTK_WINDOW (window);
+  /* Una clase CSS propia, para que los temas puedan decorar justo esta
+   * ventana (p. ej. el cielo de Frutiger Aero). */
+  gtk_widget_add_css_class (window, "vpnportal-main");
   gtk_window_set_title (main_window, "VPN Portal");
   gtk_window_set_default_size (main_window, 520, 600);
   g_signal_connect (window, "close-request",
@@ -1318,6 +1403,9 @@ on_activate (GtkApplication *app, gpointer user_data)
   /* El menú principal (☰). Cada entrada apunta a una acción "app.…";
    * "app.autostart" tiene estado TRUE/FALSE y por eso sale como casilla. */
   g_autoptr (GMenu) menu = g_menu_new ();
+  g_autoptr (GMenu) prefs_section = g_menu_new ();
+  g_menu_append (prefs_section, "Preferencias", "app.preferences");
+  g_menu_append_section (menu, NULL, G_MENU_MODEL (prefs_section));
   g_autoptr (GMenu) options_section = g_menu_new ();
   g_menu_append (options_section, "Arrancar al iniciar sesión",
                  "app.autostart");
@@ -1481,6 +1569,11 @@ on_startup (GApplication *app, gpointer user_data)
   static const GActionEntry app_actions[] = {
     { .name = "quit", .activate = on_quit_action },
     { .name = "forget-sessions", .activate = on_forget_sessions_action },
+    { .name = "preferences", .activate = on_preferences_action },
+    /* Con parámetro y estado de texto ("s") y sin .activate: activarla
+     * con un id llama a .change_state con ese id. */
+    { .name = "theme", .parameter_type = "s", .state = "'system'",
+      .change_state = on_theme_change_state },
     /* Sin .activate y con estado sí/no: GLib la convierte en un
      * interruptor que llama a .change_state con el valor contrario. */
     { .name = "autostart", .state = "false",
@@ -1503,6 +1596,16 @@ on_startup (GApplication *app, gpointer user_data)
   gtk_application_set_accels_for_action (GTK_APPLICATION (app), "app.quit",
                                          (const char *[]) { "<Control>q",
                                                             NULL });
+  gtk_application_set_accels_for_action (GTK_APPLICATION (app),
+                                         "app.preferences",
+                                         (const char *[]) { "<Control>comma",
+                                                            NULL });
+
+  /* El tema guardado (o "Sistema"), y la acción reflejándolo. */
+  theme_init ();
+  g_simple_action_set_state (
+    G_SIMPLE_ACTION (g_action_map_lookup_action (G_ACTION_MAP (app), "theme")),
+    g_variant_new_string (theme_get_current ()));
 
   g_autoptr (GPtrArray) configs = vpn_config_load (&error);
   if (error != NULL)
@@ -1555,6 +1658,11 @@ main (int argc, char *argv[])
                                              G_APPLICATION_DEFAULT_FLAGS);
 
   /* La opción --background (y su explicación en --help). */
+  /* Dónde buscar los recursos (style.css...). Por defecto se deduce del id
+   * de la app; lo fijamos para que la versión demo (otro id) los encuentre. */
+  g_application_set_resource_base_path (G_APPLICATION (app),
+                                        "/io/github/GabRanalli/VPNPortal");
+
   g_application_add_main_option (G_APPLICATION (app), "background", 'b',
                                  G_OPTION_FLAG_NONE, G_OPTION_ARG_NONE,
                                  "Arrancar oculta, solo con el icono de la "

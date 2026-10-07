@@ -1,0 +1,16 @@
+/* Negro: oscuro de negro puro (genial en pantallas OLED). */
+:root {
+  --window-bg-color: #000000;
+  --window-fg-color: #f2f2f2;
+  --view-bg-color: #0b0b0b;
+  --view-fg-color: #f2f2f2;
+  --headerbar-bg-color: #000000;
+  --headerbar-backdrop-color: #000000;
+  --headerbar-fg-color: #f2f2f2;
+  --headerbar-shade-color: rgba(255, 255, 255, 0.08);
+  --card-bg-color: #101010;
+  --card-fg-color: #f2f2f2;
+  --card-shade-color: rgba(255, 255, 255, 0.06);
+  --dialog-bg-color: #0d0d0d;
+  --popover-bg-color: #141414;
+}

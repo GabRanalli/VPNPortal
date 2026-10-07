@@ -1,0 +1,133 @@
+/* Frutiger Aero: el estilo de mediados de los 2000 (Windows Vista/7,
+ * Mac OS X Aqua, los fondos de Frutiger...): cielo azul, verde fresco,
+ * cristal semitransparente, burbujas y botones con brillo.
+ *
+ * El "brillo" de los botones es un truco clásico: un degradado con un
+ * corte brusco a mitad de altura (49% -> 51%), que imita el reflejo de una
+ * luz sobre una superficie curva y pulida. */
+:root {
+  --accent-bg-color: #1d8ff2;
+  --accent-fg-color: #ffffff;
+  --accent-color: #0a6cc9;
+  --yaru-accent-bg-color: #1d8ff2;
+  --yaru-accent-color: #0a6cc9;
+
+  --window-bg-color: #dff2ff;
+  --window-fg-color: #0d2b45;
+  --view-bg-color: rgba(255, 255, 255, 0.7);
+  --view-fg-color: #0d2b45;
+  --headerbar-bg-color: rgba(255, 255, 255, 0.55);
+  --headerbar-backdrop-color: rgba(255, 255, 255, 0.45);
+  --headerbar-fg-color: #0d2b45;
+  --headerbar-shade-color: rgba(0, 70, 140, 0.15);
+  --card-bg-color: rgba(255, 255, 255, 0.55);
+  --card-fg-color: #0d2b45;
+  --card-shade-color: rgba(0, 70, 140, 0.15);
+  --dialog-bg-color: #eef8ff;
+  --dialog-fg-color: #0d2b45;
+  --popover-bg-color: #f4fbff;
+  --popover-fg-color: #0d2b45;
+  --border-color: rgba(0, 90, 170, 0.18);
+}
+
+/* El fondo de la ventana: cielo que baja a blanco y termina en verde
+ * hierba, con burbujas. Cada burbuja son dos degradados circulares: uno
+ * casi transparente con un anillo brillante en el borde (la pompa) y otro
+ * pequeño y blanco arriba a la izquierda (el reflejo de la luz). */
+window.vpnportal-main {
+  background-image:
+    radial-gradient(circle 9px at 11% 81%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0)),
+    radial-gradient(circle 34px at 15% 86%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 74%, rgba(255, 255, 255, 0.95) 92%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(circle 5px at 26% 92%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0)),
+    radial-gradient(circle 16px at 28% 94%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 70%, rgba(255, 255, 255, 0.9) 90%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(circle 7px at 82% 74%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0)),
+    radial-gradient(circle 26px at 85% 78%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.05) 72%, rgba(255, 255, 255, 0.9) 91%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(circle 4px at 92% 89%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0)),
+    radial-gradient(circle 12px at 93% 90%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 70%, rgba(255, 255, 255, 0.85) 90%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(circle 6px at 69% 9%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0)),
+    radial-gradient(circle 20px at 71% 12%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 72%, rgba(255, 255, 255, 0.8) 91%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(to bottom, #7fcbff 0%, #c4e9ff 30%, #f0faff 60%, #d6f5c4 84%, #a9e27f 100%);
+}
+
+/* La barra superior: cristal claro con reflejo en la mitad de arriba. */
+window.vpnportal-main headerbar {
+  background-image: linear-gradient(to bottom,
+                                    rgba(255, 255, 255, 0.85) 0%,
+                                    rgba(255, 255, 255, 0.55) 49%,
+                                    rgba(210, 238, 255, 0.35) 51%,
+                                    rgba(190, 230, 255, 0.2) 100%);
+  box-shadow: inset 0 -1px rgba(255, 255, 255, 0.9),
+              0 1px 4px rgba(0, 70, 140, 0.15);
+}
+
+/* Tarjetas de cristal: blanco translúcido, borde blanco brillante y una
+ * sombra azulada. */
+.card,
+.boxed-list {
+  background-color: rgba(255, 255, 255, 0.35);
+  background-image: linear-gradient(to bottom,
+                                    rgba(255, 255, 255, 0.7),
+                                    rgba(255, 255, 255, 0.15));
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 3px 10px rgba(0, 80, 160, 0.18),
+              inset 0 1px rgba(255, 255, 255, 1);
+  border-radius: 14px;
+}
+
+/* La lista de pasos de "Actividad" va dentro de una tarjeta: que deje
+ * ver el cristal en vez de tapar con su propio fondo. */
+.card > viewport > list,
+.card list {
+  background-color: transparent;
+}
+
+/* Títulos con un pequeño relieve blanco, como el texto grabado de Aero. */
+headerbar .title,
+.heading {
+  text-shadow: 0 1px rgba(255, 255, 255, 0.85);
+}
+
+/* Botones con brillo (tipo Aqua): azul para lo principal... */
+button.suggested-action {
+  color: #ffffff;
+  background-image: linear-gradient(to bottom,
+                                    #9fe0ff 0%,
+                                    #45b0f7 49%,
+                                    #1786e6 51%,
+                                    #41b6ff 100%);
+  border: 1px solid rgba(0, 80, 160, 0.55);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.75),
+              0 1px 3px rgba(0, 60, 140, 0.35);
+  text-shadow: 0 1px rgba(0, 50, 120, 0.55);
+}
+button.suggested-action:hover {
+  background-image: linear-gradient(to bottom,
+                                    #b8e9ff 0%,
+                                    #5fc0ff 49%,
+                                    #2196f3 51%,
+                                    #5cc6ff 100%);
+}
+button.suggested-action:active {
+  background-image: linear-gradient(to bottom, #1777d0, #3aa6f0);
+}
+
+/* ...y rojo para lo de peligro (Desconectar, Eliminar). */
+button.destructive-action {
+  color: #ffffff;
+  background-image: linear-gradient(to bottom,
+                                    #ffb3ad 0%,
+                                    #f2645a 49%,
+                                    #d93025 51%,
+                                    #f2645a 100%);
+  border: 1px solid rgba(150, 20, 10, 0.55);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7),
+              0 1px 3px rgba(140, 20, 10, 0.35);
+  text-shadow: 0 1px rgba(120, 10, 0, 0.5);
+}
+button.destructive-action:hover {
+  background-image: linear-gradient(to bottom,
+                                    #ffc6c1 0%,
+                                    #f77a71 49%,
+                                    #e5453a 51%,
+                                    #f77a71 100%);
+}

@@ -35,6 +35,9 @@ gboolean   vpn_config_user_is_valid (const char *user);
  * Si no existe el ajuste, devuelve FALSE. */
 gboolean   app_settings_get_bool    (const char *key);
 void       app_settings_set_bool    (const char *key, gboolean value);
+/* Lo mismo con texto. get devuelve NULL si no existe (hay que liberarlo). */
+char      *app_settings_get_string  (const char *key);
+void       app_settings_set_string  (const char *key, const char *value);
 
 /* Devuelve un array de VpnConfig* (vacío si aún no hay fichero). */
 GPtrArray *vpn_config_load          (GError **error);

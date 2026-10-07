@@ -1,0 +1,11 @@
+/* Blanco: el claro de siempre, pero con blanco puro. */
+:root {
+  --window-bg-color: #ffffff;
+  --view-bg-color: #ffffff;
+  --headerbar-bg-color: #ffffff;
+  --headerbar-backdrop-color: #ffffff;
+  --dialog-bg-color: #ffffff;
+  --popover-bg-color: #ffffff;
+  --card-bg-color: #ffffff;
+  --card-shade-color: rgba(0, 0, 0, 0.09);
+}

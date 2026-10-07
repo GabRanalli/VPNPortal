@@ -13,14 +13,24 @@ adw_dep = dependency('libadwaita-1', version : '>= 1.6')
 webkit_dep = dependency('webkitgtk-6.0')
 gio_dep = dependency('gio-2.0')
 
+# Los ficheros que van dentro del ejecutable (CSS de los temas...). El
+# módulo "gnome" de Meson llama a glib-compile-resources y genera un .c.
+gnome = import('gnome')
+resources = gnome.compile_resources('vpnportal-resources',
+  'data/vpnportal.gresource.xml',
+  source_dir : 'data',
+  c_name : 'vpnportal')
+
 # La app.
 executable('vpnportal',
   'src/main.c',
   'src/auth.c',
   'src/config.c',
   'src/login.c',
+  'src/theme.c',
   'src/tray.c',
   'src/vpn.c',
+  resources,
   dependencies : [adw_dep, webkit_dep])
 
 # El sustituto de gpauth: un programa diminuto que solo necesita GIO.

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Ficheros que van DENTRO del ejecutable (GResource). Se leen con rutas
+     tipo /io/github/GabRanalli/VPNPortal/themes/aero.css. -->
+<gresources>
+  <gresource prefix="/io/github/GabRanalli/VPNPortal">
+    <!-- libadwaita carga style.css solo, siempre, al arrancar. -->
+    <file>style.css</file>
+    <file>themes/white.css</file>
+    <file>themes/black.css</file>
+    <file>themes/neon.css</file>
+    <file>themes/red.css</file>
+    <file>themes/aero.css</file>
+  </gresource>
+</gresources>

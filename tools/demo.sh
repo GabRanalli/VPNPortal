@@ -84,9 +84,15 @@ EOF
 
 # --- compilar la versión demo ---
 echo "Compilando la versión demo…"
+# Los CSS de los temas van dentro del ejecutable: primero se convierten
+# en un .c (es lo mismo que hace Meson con gnome.compile_resources).
+glib-compile-resources --sourcedir "$ROOT/data" --generate-source \
+  --c-name vpnportal --target "$DEMO/resources.c" \
+  "$ROOT/data/vpnportal.gresource.xml"
 gcc -std=c11 -O1 -o "$DEMO/vpnportal-demo" \
   "$ROOT"/src/main.c "$ROOT"/src/auth.c "$ROOT"/src/config.c \
-  "$ROOT"/src/login.c "$ROOT"/src/tray.c "$ROOT"/src/vpn.c \
+  "$ROOT"/src/login.c "$ROOT"/src/theme.c "$ROOT"/src/tray.c \
+  "$ROOT"/src/vpn.c "$DEMO/resources.c" \
   -DVPNPORTAL_APP_ID='"io.github.GabRanalli.VPNPortal.Demo"' \
   -DHELPER_PATH="\"$DEMO/vpnportal-helper\"" \
   -DALLOWLIST_PATH="\"$DEMO/etc/allowed-hosts\"" \

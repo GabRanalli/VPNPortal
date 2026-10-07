@@ -1,0 +1,24 @@
+/* style.css — estilos de la app que valen para cualquier tema.
+ * libadwaita lo carga solo al arrancar (desde los recursos de la app). */
+
+/* Las muestras de color del selector de temas (Preferencias). */
+.theme-swatch {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid alpha(currentColor, 0.2);
+}
+.theme-swatch.system { background-image: linear-gradient(135deg, #fafafa 50%, #242424 50%); }
+.theme-swatch.white  { background-color: #ffffff; }
+.theme-swatch.black  { background-color: #000000; }
+.theme-swatch.neon {
+  background-color: #05060d;
+  box-shadow: inset 0 0 0 2px #22e6ff, 0 0 8px alpha(#22e6ff, 0.6);
+}
+.theme-swatch.red { background-image: linear-gradient(135deg, #1b0b0d 55%, #d0212b 55%); }
+.theme-swatch.aero {
+  background-image:
+    radial-gradient(circle at 30% 70%, alpha(white, 0.9) 0, alpha(white, 0) 7px),
+    linear-gradient(to bottom, #7fcbff 0%, #dff4ff 55%, #b6ec95 100%);
+  box-shadow: inset 0 1px alpha(white, 0.9);
+}

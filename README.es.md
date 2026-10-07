@@ -19,6 +19,8 @@ construida sobre [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProt
 - **Actividad clara**: los pasos de cada conexión en lenguaje normal
   ("Contactando con el portal…", "Conectada"), con el registro completo de
   `gpclient` a un clic (y un botón para copiarlo).
+- **Temas**: Sistema, Blanco, Negro, Azul neón, Rojo y Frutiger Aero
+  (cielo, cristal, burbujas y botones con brillo), en Preferencias (Ctrl+,).
 - **Conectar sin contraseña**, sin regalar root (ver [Seguridad](#seguridad)).
 
 > **Estado:** en sus primeras versiones, pero ya sirve para el día a día. La
@@ -121,7 +123,7 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Próximamente
 
-Temas e interfaz en inglés. Ver [TODO.md](TODO.md).
+Interfaz en inglés. Ver [TODO.md](TODO.md).
 
 ## Licencia
 

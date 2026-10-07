@@ -1,0 +1,54 @@
+/* Azul neón: fondo casi negro azulado, bordes y botones cian que brillan
+ * (el brillo es una sombra del mismo color, sin desplazar: "glow"). */
+:root {
+  --accent-bg-color: #00b8d4;
+  --accent-fg-color: #001218;
+  --accent-color: #3ff0ff;
+  --yaru-accent-bg-color: #00b8d4;
+  --yaru-accent-color: #3ff0ff;
+  --destructive-bg-color: #ff2bd6;
+  --destructive-fg-color: #1a0016;
+  --destructive-color: #ff6be6;
+
+  --window-bg-color: #05060d;
+  --window-fg-color: #d6f8ff;
+  --view-bg-color: #070a14;
+  --view-fg-color: #d6f8ff;
+  --headerbar-bg-color: #05060d;
+  --headerbar-backdrop-color: #05060d;
+  --headerbar-fg-color: #9ff4ff;
+  --headerbar-shade-color: rgba(34, 230, 255, 0.25);
+  --card-bg-color: rgba(34, 230, 255, 0.04);
+  --card-fg-color: #d6f8ff;
+  --card-shade-color: rgba(34, 230, 255, 0.12);
+  --dialog-bg-color: #080b16;
+  --popover-bg-color: #0a0e1c;
+  --border-color: rgba(34, 230, 255, 0.3);
+}
+
+/* Las tarjetas, con borde cian y un halo suave. */
+.card,
+.boxed-list {
+  border: 1px solid rgba(34, 230, 255, 0.35);
+  box-shadow: 0 0 14px rgba(34, 230, 255, 0.12);
+}
+
+/* El título de la ventana y de las tarjetas, con brillo. */
+headerbar .title,
+.heading {
+  text-shadow: 0 0 5px rgba(34, 230, 255, 0.45);
+}
+
+/* Botones principales y de peligro: color neón + halo. */
+button.suggested-action {
+  box-shadow: 0 0 10px rgba(34, 230, 255, 0.65);
+}
+button.suggested-action:hover {
+  box-shadow: 0 0 16px rgba(34, 230, 255, 0.9);
+}
+button.destructive-action {
+  box-shadow: 0 0 10px rgba(255, 43, 214, 0.6);
+}
+button.destructive-action:hover {
+  box-shadow: 0 0 16px rgba(255, 43, 214, 0.85);
+}

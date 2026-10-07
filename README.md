@@ -19,6 +19,8 @@ of [GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnec
 - **Clear activity view**: the steps of each connection in plain words
   ("Contacting the portal…", "Connected"), with the full `gpclient` log one
   click away (and a button to copy it).
+- **Themes**: System, White, Black, Neon blue, Red and Frutiger Aero
+  (sky, glass, bubbles and glossy buttons), in Preferences (Ctrl+,).
 - **No password to connect**, without giving away root (see
   [Security](#security)).
 
@@ -120,7 +122,7 @@ VPN Portal ──sudo -n──> vpnportal-helper ──> gpclient (root)
 
 ## Roadmap
 
-Themes and an English UI. See
+An English UI. See
 [TODO.md](TODO.md) (Spanish).
 
 ## License
